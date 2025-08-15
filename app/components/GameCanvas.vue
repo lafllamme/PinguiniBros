@@ -40,7 +40,7 @@ const startGame = async () => {
     })
 
     // Get KAPLAY functions
-    const { loadSprite, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, text, go, destroy, rect, color, anchor, layer, layers, z } = gameInstance
+    const { loadSprite, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, text, go, destroy, rect, color, anchor, layer, layers, z, camPos, width, height, fixed, onUpdate } = gameInstance
 
     // Load the provided PNG background from app/assets/sprites/canvas_bg.png
     const bgUrl = new URL('../assets/sprites/canvas_bg.png', import.meta.url).href
@@ -63,6 +63,7 @@ const startGame = async () => {
     
     // Create main game scene
     scene('game', () => {
+      const LEVEL_WIDTH = 2400
       // Set gravity
       setGravity(1600)
       
@@ -73,6 +74,7 @@ const startGame = async () => {
         pos(0, 0),
         anchor('topleft'),
         layer('bg'),
+        fixed(),
       ])
       
       // Create player using your player.png sprite
@@ -94,23 +96,24 @@ const startGame = async () => {
       // start run animation automatically
       player.play('run')
       
-      // Create ground platforms using the grass and earth colors from the background
-      // Main ground platform (earth layer)
-      add([
-        rect(800, 50),
-        pos(0, 550),
-        area(),
-        body({ isStatic: true }),
-        color(139, 69, 19),
-        layer('game'),
-        z(1),
-        'ground'
-      ])
+      // Create ground across the entire level width
+      for (let x = 0; x < LEVEL_WIDTH; x += 200) {
+        add([
+          rect(200, 50),
+          pos(x, 550),
+          area(),
+          body({ isStatic: true }),
+          color(139, 69, 19),
+          layer('game'),
+          z(1),
+          'ground'
+        ])
+      }
       
       // Grass platforms (green layer)
       add([
         rect(100, 20),
-        pos(200, 450),
+        pos(300, 450),
         area(),
         body({ isStatic: true }),
         color(34, 139, 34),
@@ -121,7 +124,7 @@ const startGame = async () => {
       
       add([
         rect(100, 20),
-        pos(400, 350),
+        pos(700, 380),
         area(),
         body({ isStatic: true }),
         color(34, 139, 34),
@@ -132,13 +135,46 @@ const startGame = async () => {
       
       add([
         rect(100, 20),
-        pos(600, 250),
+        pos(1100, 320),
         area(),
         body({ isStatic: true }),
         color(34, 139, 34),
         layer('game'),
         z(1),
         'ground'
+      ])
+
+      add([
+        rect(120, 20),
+        pos(1450, 300),
+        area(),
+        body({ isStatic: true }),
+        color(34, 139, 34),
+        layer('game'),
+        z(1),
+        'ground'
+      ])
+
+      add([
+        rect(140, 20),
+        pos(1750, 260),
+        area(),
+        body({ isStatic: true }),
+        color(34, 139, 34),
+        layer('game'),
+        z(1),
+        'ground'
+      ])
+
+      // Goal at the end of the level
+      add([
+        rect(20, 120),
+        pos(LEVEL_WIDTH - 80, 430),
+        area(),
+        color(255, 215, 0),
+        layer('game'),
+        z(2),
+        'goal'
       ])
       
       // Create collectible fish with orange color to match the flowers
@@ -227,6 +263,7 @@ const startGame = async () => {
         pos(20, 20),
         color(255, 255, 255),
         layer('ui'),
+        fixed(),
         z(100),
         {
           id: 'scoreText',
@@ -239,6 +276,7 @@ const startGame = async () => {
         pos(20, 50),
         color(255, 255, 255),
         layer('ui'),
+        fixed(),
         z(100),
         {
           id: 'livesText',
@@ -251,23 +289,63 @@ const startGame = async () => {
       add([
         rect(8, 8),
         pos(300, 520),
-        color(255, 165, 0), // Orange
+        color(255, 165, 0),
+        layer('game'),
         'decoration'
       ])
       
       add([
         rect(8, 8),
         pos(500, 520),
-        color(255, 165, 0), // Orange
+        color(255, 165, 0),
+        layer('game'),
         'decoration'
       ])
       
       add([
         rect(8, 8),
         pos(700, 520),
-        color(255, 165, 0), // Orange
+        color(255, 165, 0),
+        layer('game'),
         'decoration'
       ])
+
+      // Camera follow (x only), keep background fixed
+      onUpdate(() => {
+        let targetX = player.pos.x
+        const half = width() / 2
+        if (targetX < half) targetX = half
+        if (targetX > LEVEL_WIDTH - half) targetX = LEVEL_WIDTH - half
+        camPos(targetX, height() / 2)
+      })
+
+      // Win condition
+      player.onCollide('goal', () => {
+        go('win')
+      })
+    })
+
+    // Simple win scene
+    scene('win', () => {
+      add([
+        text('You Win! 🎉', { size: 32 }),
+        pos(width() / 2, height() / 2 - 20),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(101),
+      ])
+
+      add([
+        text('Press R to restart', { size: 16 }),
+        pos(width() / 2, height() / 2 + 20),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(101),
+      ])
+
+      onKeyPress('r', () => go('game'))
     })
     
     // Start the game

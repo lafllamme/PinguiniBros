@@ -35,6 +35,7 @@
     "@unocss/preset-web-fonts": "^66.4.2",
     "@unocss/preset-wind": "^66.4.2",
     "animated-unocss": "^0.0.6",
+    "sass-embedded": "^1.90.0",
     "unocss": "^66.4.2",
     "unocss-preset-animations": "^1.2.1",
     "unocss-preset-radix": "^2.8.2"

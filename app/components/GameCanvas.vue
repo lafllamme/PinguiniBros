@@ -3,8 +3,7 @@
     <canvas ref="gameCanvas" class="game-canvas"></canvas>
     <div v-if="!gameStarted" class="game-overlay">
       <div class="game-menu">
-        <h2 class="text-2xl font-bold text-white mb-4">🐧 Pinguini Bros</h2>
-        <p class="text-white mb-6">A fun platformer adventure!</p>
+        <p class="color-white mb-6">A fun platformer adventure!</p>
         <button 
           @click="startGame" 
           class="bg-blue-5 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"

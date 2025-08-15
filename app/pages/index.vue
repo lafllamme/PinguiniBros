@@ -1,7 +1,7 @@
 <template>
   <div class="game-container">
-    <div class="container mx-auto px-4 py-8">
-      <h1 class="game-title">
+    <div class="container m-12">
+      <h1 class="game-title text-4xl color-black font-barrio">
         🐧 Penguini Bros
       </h1>
       

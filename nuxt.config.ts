@@ -19,6 +19,11 @@ export default defineNuxtConfig({
     }
   },
 
+    // Global CSS
+    css: [
+        '@/assets/styles/main.ts',
+    ],
+
   i18n: {
     locales: [
       {

@@ -22,7 +22,6 @@ export const presets = [
       // ...
     },
   }),
-  // @ts-expect-error presetRadix is not defined
   presetRadix({
     darkSelector: '.dark',
     lightSelector: '.light',

@@ -3,9 +3,64 @@
 // NOTE: This module is context-agnostic. Call initCoinSystem(k) once with your Kaplay ctx.
 
 let K: any = null
+let coinSfxReady = false
 
 export function initCoinSystem(ctx: any) {
   K = ctx
+}
+
+function generateCoinBeepWavUrl(): string {
+  const sampleRate = 44100
+  const durationSec = 0.12
+  const numSamples = Math.floor(sampleRate * durationSec)
+  const frequencyHz = 880
+  const volume = 0.18
+  const numChannels = 1
+  const bitsPerSample = 16
+
+  const dataSize = numSamples * numChannels * (bitsPerSample / 8)
+  const buffer = new ArrayBuffer(44 + dataSize)
+  const view = new DataView(buffer)
+
+  // RIFF header
+  let offset = 0
+  function writeString(str: string) {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
+    offset += str.length
+  }
+  function writeUint32LE(val: number) {
+    view.setUint32(offset, val, true)
+    offset += 4
+  }
+  function writeUint16LE(val: number) {
+    view.setUint16(offset, val, true)
+    offset += 2
+  }
+
+  writeString('RIFF')
+  writeUint32LE(36 + dataSize)
+  writeString('WAVE')
+  writeString('fmt ')
+  writeUint32LE(16) // Subchunk1Size (PCM)
+  writeUint16LE(1)  // AudioFormat (Linear PCM)
+  writeUint16LE(numChannels)
+  writeUint32LE(sampleRate)
+  writeUint32LE(sampleRate * numChannels * (bitsPerSample / 8))
+  writeUint16LE(numChannels * (bitsPerSample / 8))
+  writeUint16LE(bitsPerSample)
+  writeString('data')
+  writeUint32LE(dataSize)
+
+  // Sine wave data
+  const amplitude = Math.floor(32767 * volume)
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate
+    const sample = Math.sin(2 * Math.PI * frequencyHz * t)
+    view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, sample)) * amplitude, true)
+  }
+
+  const blob = new Blob([buffer], { type: 'audio/wav' })
+  return URL.createObjectURL(blob)
 }
 
 let currentScore = 0
@@ -38,6 +93,13 @@ export async function loadCoinAssets() {
   })
 
   // Sounds
+  try {
+    const coinBeepUrl = generateCoinBeepWavUrl()
+    await K.loadSound('coin', coinBeepUrl)
+    coinSfxReady = true
+  } catch {
+    coinSfxReady = false
+  }
   K.loadSound('lobby', lobbyUrl)
 }
 
@@ -78,7 +140,9 @@ export function makeCoin(position: Vec2Like, opts: MakeCoinOpts = {}) {
     ;(coin as any)._collected = true
     currentScore += 1
     notifyScore()
-    K.play('coin')
+    if (coinSfxReady) {
+      try { K.play('coin', { volume: 0.35 }) } catch {}
+    }
     K.destroy(coin)
   })
 

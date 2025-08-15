@@ -3,10 +3,11 @@
     <canvas ref="gameCanvas" class="game-canvas"></canvas>
     <div v-if="!gameStarted" class="game-overlay">
       <div class="game-menu">
-        <p class="color-white mb-6">A fun platformer adventure!</p>
+        <h2 class="text-2xl font-bold text-white mb-4">🐧 Pinguini Bros</h2>
+        <p class="text-white mb-6">A fun platformer adventure!</p>
         <button 
           @click="startGame" 
-          class="bg-blue-5 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
         >
           Start Game
         </button>
@@ -39,11 +40,25 @@ const startGame = async () => {
     })
 
     // Get KAPLAY functions
-    const { loadSprite, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, text, go, destroy } = gameInstance
+    const { loadSprite, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, text, go, destroy, rect, color, anchor, layer, layers, z } = gameInstance
 
-    // Load basic sprites
+    // Load the provided PNG background from app/assets/sprites/canvas_bg.png
+    const bgUrl = new URL('../assets/sprites/canvas_bg.png', import.meta.url).href
+    loadSprite('level_bg', bgUrl)
+
+    // Load animated player from assets/sprites/Owlet_Monster_Run_6.png (6 frames, 32x32)
+    const owletUrl = new URL('../assets/sprites/Owlet_Monster_Run_6.png', import.meta.url).href
+    loadSprite('player', owletUrl, {
+      sliceX: 6,
+      sliceY: 1,
+      anims: {
+        run: { from: 0, to: 5, speed: 8, loop: true },
+      },
+    })
+    
+    // Load basic sprites with better colors
     loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('ice', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+    loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
     loadSprite('fish', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
     
     // Create main game scene
@@ -51,57 +66,89 @@ const startGame = async () => {
       // Set gravity
       setGravity(1600)
       
-      // Create player (penguin)
+      // Define layers and add the PNG background on the back layer
+      layers([ 'bg', 'game', 'ui' ], 'game')
+      add([
+        sprite('level_bg'),
+        pos(0, 0),
+        anchor('topleft'),
+        layer('bg'),
+      ])
+      
+      // Create player using your player.png sprite
       const player = add([
-        sprite('penguin'),
-        pos(50, 400),
+        sprite('player'),
+        pos(50, 450),
+        anchor('center'),
         area(),
         body(),
+        layer('game'),
+        z(10),
+        'player',
         {
           speed: 320,
           isOnGround: false
         }
       ])
+
+      // start run animation automatically
+      player.play('run')
       
-      // Create ground (ice)
+      // Create ground platforms using the grass and earth colors from the background
+      // Main ground platform (earth layer)
       add([
-        sprite('ice'),
+        rect(800, 50),
         pos(0, 550),
         area(),
         body({ isStatic: true }),
-        scale(800, 50)
+        color(139, 69, 19),
+        layer('game'),
+        z(1),
+        'ground'
       ])
       
-      // Create some ice platforms
+      // Grass platforms (green layer)
       add([
-        sprite('ice'),
+        rect(100, 20),
         pos(200, 450),
         area(),
         body({ isStatic: true }),
-        scale(100, 20)
+        color(34, 139, 34),
+        layer('game'),
+        z(1),
+        'ground'
       ])
       
       add([
-        sprite('ice'),
+        rect(100, 20),
         pos(400, 350),
         area(),
         body({ isStatic: true }),
-        scale(100, 20)
+        color(34, 139, 34),
+        layer('game'),
+        z(1),
+        'ground'
       ])
       
       add([
-        sprite('ice'),
+        rect(100, 20),
         pos(600, 250),
         area(),
         body({ isStatic: true }),
-        scale(100, 20)
+        color(34, 139, 34),
+        layer('game'),
+        z(1),
+        'ground'
       ])
       
-      // Create collectible fish
+      // Create collectible fish with orange color to match the flowers
       add([
         sprite('fish'),
         pos(250, 400),
         area(),
+        color(255, 165, 0),
+        layer('game'),
+        z(2),
         'fish'
       ])
       
@@ -109,6 +156,9 @@ const startGame = async () => {
         sprite('fish'),
         pos(450, 300),
         area(),
+        color(255, 165, 0),
+        layer('game'),
+        z(2),
         'fish'
       ])
       
@@ -116,6 +166,9 @@ const startGame = async () => {
         sprite('fish'),
         pos(650, 200),
         area(),
+        color(255, 165, 0),
+        layer('game'),
+        z(2),
         'fish'
       ])
       
@@ -129,6 +182,14 @@ const startGame = async () => {
       })
       
       onKeyPress('space', () => {
+        if (player.isOnGround) {
+          player.jump(640)
+          player.isOnGround = false
+        }
+      })
+
+      // Arrow Up jump as well
+      onKeyPress('up', () => {
         if (player.isOnGround) {
           player.jump(640)
           player.isOnGround = false
@@ -152,18 +213,21 @@ const startGame = async () => {
       })
       
       // Collision detection
-      player.onCollide('ice', () => {
+      player.onCollide('ground', () => {
         player.isOnGround = true
       })
       
-      player.onCollide('fish', (fish) => {
+      player.onCollide('fish', (fish: any) => {
         destroy(fish)
       })
       
-      // UI
+      // UI with colors that match the background
       add([
         text('Score: 0'),
         pos(20, 20),
+        color(255, 255, 255),
+        layer('ui'),
+        z(100),
         {
           id: 'scoreText',
           value: 0
@@ -173,10 +237,36 @@ const startGame = async () => {
       add([
         text('Lives: 3'),
         pos(20, 50),
+        color(255, 255, 255),
+        layer('ui'),
+        z(100),
         {
           id: 'livesText',
           value: 3
         }
+      ])
+      
+      // Add some decorative elements that match the background
+      // Orange flowers like in the background
+      add([
+        rect(8, 8),
+        pos(300, 520),
+        color(255, 165, 0), // Orange
+        'decoration'
+      ])
+      
+      add([
+        rect(8, 8),
+        pos(500, 520),
+        color(255, 165, 0), // Orange
+        'decoration'
+      ])
+      
+      add([
+        rect(8, 8),
+        pos(700, 520),
+        color(255, 165, 0), // Orange
+        'decoration'
       ])
     })
     

@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-crimson-5 h-svh">
+  <div class="bg-mint-6 h-svh">
     <div class="mx-10">
         <h1 class="py-5 game-title text-5xl tracking-wide antialiased color-pureBlack font-barrio">
           🐧 Penguini Bros

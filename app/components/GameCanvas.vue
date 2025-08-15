@@ -40,7 +40,7 @@ const startGame = async () => {
     })
 
     // Get KAPLAY functions
-    const { loadSprite, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, text, go, destroy, rect, color, anchor, layer, layers, z, camPos, width, height, fixed, onUpdate } = gameInstance
+    const { loadSprite, loadSound, play, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, onClick, text, go, destroy, rect, circle, color, anchor, layer, setLayers, z, setCamPos, width, height, fixed, onUpdate } = gameInstance
 
     // Load the provided PNG background from app/assets/sprites/canvas_bg.png
     const bgUrl = new URL('../assets/sprites/canvas_bg.png', import.meta.url).href
@@ -55,20 +55,27 @@ const startGame = async () => {
         run: { from: 0, to: 5, speed: 8, loop: true },
       },
     })
+
+    // Simple coin sprite (gold circle via generated sprite)
+    loadSprite('coin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAADUlEQVR42mNgGAWjYBQAAAgAAa0m1q0AAAAASUVORK5CYII=')
+
+    // Placeholder collect sound (short beep)
+    loadSound('collect', 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAAA')
     
     // Load basic sprites with better colors
     loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
     loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
     loadSprite('fish', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
     
+    // Configure layers ONCE globally (bg at back, ui on top)
+    setLayers(['bg', 'game', 'ui'], 'game')
+
     // Create main game scene
-    scene('game', () => {
+    scene('game', ({ level = 1 } = {}) => {
       const LEVEL_WIDTH = 2400
       // Set gravity
       setGravity(1600)
       
-      // Define layers and add the PNG background on the back layer
-      layers([ 'bg', 'game', 'ui' ], 'game')
       add([
         sprite('level_bg'),
         pos(0, 0),
@@ -177,36 +184,24 @@ const startGame = async () => {
         'goal'
       ])
       
-      // Create collectible fish with orange color to match the flowers
-      add([
-        sprite('fish'),
-        pos(250, 400),
-        area(),
-        color(255, 165, 0),
-        layer('game'),
-        z(2),
-        'fish'
-      ])
-      
-      add([
-        sprite('fish'),
-        pos(450, 300),
-        area(),
-        color(255, 165, 0),
-        layer('game'),
-        z(2),
-        'fish'
-      ])
-      
-      add([
-        sprite('fish'),
-        pos(650, 200),
-        area(),
-        color(255, 165, 0),
-        layer('game'),
-        z(2),
-        'fish'
-      ])
+      // Coins along the level
+      const coinPositions = [
+        pos(350, 420), pos(380, 420), pos(410, 420),
+        pos(720, 350), pos(750, 350), pos(780, 350),
+        pos(1120, 290), pos(1150, 290),
+        pos(1480, 270), pos(1510, 270),
+        pos(1780, 230), pos(1810, 230),
+      ]
+      coinPositions.forEach((p) => {
+        add([
+          sprite('coin'),
+          p,
+          area(),
+          layer('game'),
+          z(2),
+          'coin'
+        ])
+      })
       
       // Player movement
       onKeyDown('left', () => {
@@ -253,35 +248,32 @@ const startGame = async () => {
         player.isOnGround = true
       })
       
-      player.onCollide('fish', (fish: any) => {
-        destroy(fish)
+      player.onCollide('coin', (c: any) => {
+        destroy(c)
+        score += 1
+        scoreText.text = `Score: ${score}`
+        play('collect')
       })
       
       // UI with colors that match the background
-      add([
+      let score = 0
+      const scoreText = add([
         text('Score: 0'),
         pos(20, 20),
         color(255, 255, 255),
         layer('ui'),
         fixed(),
         z(100),
-        {
-          id: 'scoreText',
-          value: 0
-        }
       ])
       
-      add([
+      let lives = 3
+      const livesText = add([
         text('Lives: 3'),
         pos(20, 50),
         color(255, 255, 255),
         layer('ui'),
         fixed(),
         z(100),
-        {
-          id: 'livesText',
-          value: 3
-        }
       ])
       
       // Add some decorative elements that match the background
@@ -316,7 +308,7 @@ const startGame = async () => {
         const half = width() / 2
         if (targetX < half) targetX = half
         if (targetX > LEVEL_WIDTH - half) targetX = LEVEL_WIDTH - half
-        camPos(targetX, height() / 2)
+        setCamPos(targetX, height() / 2)
       })
 
       // Win condition
@@ -337,7 +329,7 @@ const startGame = async () => {
       ])
 
       add([
-        text('Press R to restart', { size: 16 }),
+        text('Press R to restart or Enter for Level Select', { size: 16 }),
         pos(width() / 2, height() / 2 + 20),
         anchor('center'),
         layer('ui'),
@@ -346,10 +338,94 @@ const startGame = async () => {
       ])
 
       onKeyPress('r', () => go('game'))
+      onKeyPress('enter', () => go('levelSelect'))
+      onKeyPress('return', () => go('levelSelect'))
+      onKeyPress('kpenter', () => go('levelSelect'))
+      onKeyPress('space', () => go('levelSelect'))
+    })
+
+    // Menu scene -> Go to level select
+    scene('menu', () => {
+      add([
+        sprite('level_bg'),
+        pos(0, 0),
+        anchor('topleft'),
+        layer('bg'),
+        fixed(),
+      ])
+
+      const title = add([
+        text('Pinguini Bros', { size: 36 }),
+        pos(width() / 2, 180),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(100),
+      ])
+
+      const startBtn = add([
+        text('Start', { size: 24 }),
+        pos(width() / 2, 260),
+        anchor('center'),
+        area(),
+        layer('ui'),
+        fixed(),
+        z(100),
+        'startBtn'
+      ])
+
+      onClick('startBtn', () => go('levelSelect'))
+      onKeyPress('enter', () => go('levelSelect'))
+      onKeyPress('return', () => go('levelSelect'))
+      onKeyPress('kpenter', () => go('levelSelect'))
+      onKeyPress('space', () => go('levelSelect'))
+    })
+
+    // Level select scene (mock 1..99)
+    scene('levelSelect', () => {
+      add([
+        sprite('level_bg'),
+        pos(0, 0),
+        anchor('topleft'),
+        layer('bg'),
+        fixed(),
+      ])
+
+      add([
+        text('Select Level', { size: 28 }),
+        pos(width() / 2, 120),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(100),
+      ])
+
+      const cols = 10
+      const startX = 120
+      const startY = 180
+      const gapX = 60
+      const gapY = 40
+      for (let i = 1; i <= 99; i++) {
+        const col = (i - 1) % cols
+        const row = Math.floor((i - 1) / cols)
+        const btn = add([
+          text(String(i), { size: 18 }),
+          pos(startX + col * gapX, startY + row * gapY),
+          anchor('center'),
+          area(),
+          layer('ui'),
+          fixed(),
+          z(100),
+          `level-${i}`
+        ])
+        onClick(`level-${i}`, () => go('game', { level: i }))
+      }
+
+      onKeyPress('escape', () => go('menu'))
     })
     
-    // Start the game
-    go('game')
+    // Start at menu
+    go('menu')
     
   } catch (error) {
     console.error('Failed to start game:', error)

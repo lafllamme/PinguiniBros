@@ -1,0 +1,42 @@
+{
+  "name": "nuxt-app",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/fonts": "0.11.4",
+    "@nuxt/icon": "2.0.0",
+    "@nuxt/image": "1.11.0",
+    "@nuxt/scripts": "0.11.10",
+    "@nuxt/test-utils": "3.19.2",
+    "@nuxtjs/i18n": "^10.0.5",
+    "@unhead/vue": "^2.0.14",
+    "@unocss/reset": "^66.4.2",
+    "consola": "^3.4.2",
+    "kaplay": "^3001.0.19",
+    "nuxt": "^4.0.3",
+    "vue": "^3.5.18",
+    "vue-router": "^4.5.1"
+  },
+  "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184",
+  "devDependencies": {
+    "@unocss/nuxt": "^66.4.2",
+    "@unocss/preset-attributify": "^66.4.2",
+    "@unocss/preset-icons": "^66.4.2",
+    "@unocss/preset-mini": "^66.4.2",
+    "@unocss/preset-typography": "^66.4.2",
+    "@unocss/preset-uno": "^66.4.2",
+    "@unocss/preset-web-fonts": "^66.4.2",
+    "@unocss/preset-wind": "^66.4.2",
+    "animated-unocss": "^0.0.6",
+    "unocss": "^66.4.2",
+    "unocss-preset-animations": "^1.2.1",
+    "unocss-preset-radix": "^2.8.2"
+  }
+}

@@ -24,7 +24,6 @@ export const presets = [
   }),
   presetRadix({
     darkSelector: '.dark',
-    lightSelector: '.light',
     palette: [
       'gray',
       'mauve',
@@ -60,6 +59,7 @@ export const presets = [
       'black',
       'white',
     ],
+      extend:true
   }),
   presetAnimations(),
 ]

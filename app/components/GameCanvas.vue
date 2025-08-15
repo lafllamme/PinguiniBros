@@ -40,7 +40,7 @@ const startGame = async () => {
     })
 
     // Get KAPLAY functions
-    const { loadSprite, loadSound, play, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, onClick, text, go, destroy, rect, circle, color, anchor, layer, setLayers, z, setCamPos, width, height, fixed, onUpdate } = gameInstance
+    const { loadSprite, loadSound, play, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, onClick, text, go, destroy, rect, circle, color, anchor, layer, setLayers, z, setCamPos, width, height, fixed, onUpdate, lifespan, rand, opacity } = gameInstance
 
     // Load the provided PNG background from app/assets/sprites/canvas_bg.png
     const bgUrl = new URL('../assets/sprites/canvas_bg.png', import.meta.url).href
@@ -56,11 +56,7 @@ const startGame = async () => {
       },
     })
 
-    // Simple coin sprite (gold circle via generated sprite)
-    loadSprite('coin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAADUlEQVR42mNgGAWjYBQAAAgAAa0m1q0AAAAASUVORK5CYII=')
-
-    // Placeholder collect sound (short beep)
-    loadSound('collect', 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAAA')
+    // Remove old coin assets; new ones are loaded via coin system
     
     // Load basic sprites with better colors
     loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
@@ -184,24 +180,7 @@ const startGame = async () => {
         'goal'
       ])
       
-      // Coins along the level
-      const coinPositions = [
-        pos(350, 420), pos(380, 420), pos(410, 420),
-        pos(720, 350), pos(750, 350), pos(780, 350),
-        pos(1120, 290), pos(1150, 290),
-        pos(1480, 270), pos(1510, 270),
-        pos(1780, 230), pos(1810, 230),
-      ]
-      coinPositions.forEach((p) => {
-        add([
-          sprite('coin'),
-          p,
-          area(),
-          layer('game'),
-          z(2),
-          'coin'
-        ])
-      })
+      // Coins along the level will be spawned via coin system below
       
       // Player movement
       onKeyDown('left', () => {
@@ -248,11 +227,9 @@ const startGame = async () => {
         player.isOnGround = true
       })
       
+      // Coin collection handled inside coinSystem.makeCoin, but keep a guard for any stray coins
       player.onCollide('coin', (c: any) => {
-        destroy(c)
-        score += 1
-        scoreText.text = `Score: ${score}`
-        play('collect')
+        // No-op, coinSystem already destroys & updates score
       })
       
       // UI with colors that match the background
@@ -315,6 +292,25 @@ const startGame = async () => {
       player.onCollide('goal', () => {
         go('win')
       })
+
+      // ------------------------------------
+      // Coin system: load assets and spawn
+      // ------------------------------------
+      ;(async () => {
+        const { initCoinSystem, loadCoinAssets, spawnCoinsRandom, onScoreChanged, makeCoin } = await import('../utils/coinSystem')
+        initCoinSystem(gameInstance)
+        await loadCoinAssets()
+        // Spawn a few coins near start for immediate visibility
+        makeCoin({ x: 150, y: 500 })
+        makeCoin({ x: 220, y: 500 })
+        makeCoin({ x: 290, y: 500 })
+        // And random coins across the level
+        spawnCoinsRandom(15, { x: 0, y: 0, w: LEVEL_WIDTH, h: 600 }, { falling: false })
+        onScoreChanged((n: number) => {
+          score = n
+          scoreText.text = `Score: ${score}`
+        })
+      })()
     })
 
     // Simple win scene

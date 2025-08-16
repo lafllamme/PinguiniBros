@@ -1,13 +1,8 @@
 <template>
-  <div class="bg-mint-6 h-svh">
-    <div class="mx-10">
-        <h1 class="py-5 game-title text-5xl tracking-wide antialiased color-pureBlack font-barrio">
-          🐧 Penguini Bros
-        </h1>
-    </div>
+  <div class="bg-gradient-to-r from-emerald-400 to-cyan-400 h-svh">
     <!-- Game Canvas -->
     <div class="flex justify-center">
-      <GameCanvas />
+      <GameCanvas/>
     </div>
   </div>
 </template>
@@ -19,7 +14,7 @@ import GameCanvas from '@/components/GameCanvas.vue'
 useHead({
   title: 'Penguini Bros - KAPLAY Game',
   meta: [
-    { name: 'description', content: 'A fun platformer game built with KAPLAY and Nuxt' }
+    {name: 'description', content: 'A fun platformer game built with KAPLAY and Nuxt'}
   ]
 })
 </script>

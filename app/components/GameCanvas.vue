@@ -1,46 +1,113 @@
 <template>
-  <div class="game-container">
-    <canvas ref="gameCanvas" class="game-canvas"></canvas>
-    <div v-if="!gameStarted" class="game-overlay">
-      <div class="game-menu">
-        <h2 class="text-2xl font-bold text-white mb-4">🐧 Pinguini Bros</h2>
-        <p class="text-white mb-6">A fun platformer adventure!</p>
-        <button 
-          @click="startGame" 
-          class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-        >
-          Start Game
-        </button>
+  <div ref="containerEl" class="game-container">
+    <canvas
+      ref="gameCanvas"
+      v-show="gameStarted"
+      :class="gameStarted && 'game-canvas'"
+    />
+    <div v-if="!gameStarted">
+      <div class="grid grid-cols-1 my-48 justify-center rounded-3xl bg-pureBlack/40 backdrop-blur-lg">
+        <div class="mx-10">
+          <h1
+              id="app-title"
+              class="py-5 game-title text-5xl tracking-wide antialiased color-pureWhite font-barrio"
+          >
+            Penguini Bros
+          </h1>
+        </div>
+        <p class="color-gray-2 text-center antialiased tracking-tight font-medium font-mono">A fun platformer adventure!</p>
+        <div class="flex my-4 justify-center">
+          <button
+              @click="startGame"
+              class="bg-plum-12 rounded-xl hover:bg-plum-11 font-pixelify transition-colors ease-out duration-200 color-pureWhite font-bold py-3 px-6 transition-colors"
+          >
+            Start Game
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import {ref, onMounted, onUnmounted, computed, shallowRef, watch} from 'vue'
 import kaplay from 'kaplay'
+// VueUse
+import {useWindowSize, useElementSize, useDocumentVisibility} from '@vueuse/core'
 
 const gameCanvas = ref<HTMLCanvasElement>()
+const containerEl = ref<HTMLElement>()
 const gameStarted = ref(false)
 let gameInstance: any = null
+let lobbyMusic: any = null
+
+// Responsive sizing using VueUse
+const {width: winW, height: winH} = useWindowSize()
+const headerEl = shallowRef<HTMLElement | null>(null)
+const {height: headerH} = useElementSize(headerEl)
+
+const BASE_W = 800
+const BASE_H = 600
+
+function computeScale(): number {
+  const availW = Math.max(320, Math.floor(winW.value * 0.6))
+  const availH = Math.max(240, Math.floor(winH.value - headerH.value - 32))
+  return Math.max(1, Math.min(availW / BASE_W, availH / BASE_H))
+}
 
 const startGame = async () => {
   if (!gameCanvas.value) return
-  
+
   gameStarted.value = true
-  
+
   try {
+    // Compute a pixel-perfect scale so clicks map correctly (no CSS scaling)
+    const scaleFactor = computeScale()
+
     // Initialize KAPLAY
     gameInstance = kaplay({
       canvas: gameCanvas.value,
-      width: 800,
-      height: 600,
-      scale: 1,
+      width: BASE_W,
+      height: BASE_H,
+      scale: scaleFactor,
       global: true,
     })
 
     // Get KAPLAY functions
-    const { loadSprite, loadSound, play, scene, setGravity, add, sprite, pos, area, body, scale, onKeyDown, onKeyPress, onClick, text, go, destroy, rect, circle, color, anchor, layer, setLayers, z, setCamPos, width, height, fixed, onUpdate, lifespan, rand, opacity } = gameInstance
+    const {
+      loadSprite,
+      loadSound,
+      play,
+      scene,
+      setGravity,
+      add,
+      sprite,
+      pos,
+      area,
+      body,
+      scale,
+      onKeyDown,
+      onKeyPress,
+      onClick,
+      text,
+      go,
+      destroy,
+      rect,
+      circle,
+      color,
+      anchor,
+      layer,
+      setLayers,
+      z,
+      setCamPos,
+      width,
+      height,
+      fixed,
+      onUpdate,
+      lifespan,
+      rand,
+      opacity
+    } = gameInstance
 
     // Load the provided PNG background from app/assets/sprites/canvas_bg.png
     const bgUrl = new URL('../assets/sprites/canvas_bg.png', import.meta.url).href
@@ -52,26 +119,26 @@ const startGame = async () => {
       sliceX: 6,
       sliceY: 1,
       anims: {
-        run: { from: 0, to: 5, speed: 8, loop: true },
+        run: {from: 0, to: 5, speed: 8, loop: true},
       },
     })
 
     // Remove old coin assets; new ones are loaded via coin system
-    
+
     // Load basic sprites with better colors
     loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
     loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
     loadSprite('fish', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    
+
     // Configure layers ONCE globally (bg at back, ui on top)
     setLayers(['bg', 'game', 'ui'], 'game')
 
     // Create main game scene
-    scene('game', ({ level = 1 } = {}) => {
+    scene('game', ({level = 1} = {}) => {
       const LEVEL_WIDTH = 2400
       // Set gravity
       setGravity(1600)
-      
+
       add([
         sprite('level_bg'),
         pos(0, 0),
@@ -79,7 +146,7 @@ const startGame = async () => {
         layer('bg'),
         fixed(),
       ])
-      
+
       // Create player using your player.png sprite
       const player = add([
         sprite('player'),
@@ -98,49 +165,49 @@ const startGame = async () => {
 
       // start run animation automatically
       player.play('run')
-      
+
       // Create ground across the entire level width
       for (let x = 0; x < LEVEL_WIDTH; x += 200) {
         add([
           rect(200, 50),
           pos(x, 550),
           area(),
-          body({ isStatic: true }),
+          body({isStatic: true}),
           color(139, 69, 19),
           layer('game'),
           z(1),
           'ground'
         ])
       }
-      
+
       // Grass platforms (green layer)
       add([
         rect(100, 20),
         pos(300, 450),
         area(),
-        body({ isStatic: true }),
+        body({isStatic: true}),
         color(34, 139, 34),
         layer('game'),
         z(1),
         'ground'
       ])
-      
+
       add([
         rect(100, 20),
         pos(700, 380),
         area(),
-        body({ isStatic: true }),
+        body({isStatic: true}),
         color(34, 139, 34),
         layer('game'),
         z(1),
         'ground'
       ])
-      
+
       add([
         rect(100, 20),
         pos(1100, 320),
         area(),
-        body({ isStatic: true }),
+        body({isStatic: true}),
         color(34, 139, 34),
         layer('game'),
         z(1),
@@ -151,7 +218,7 @@ const startGame = async () => {
         rect(120, 20),
         pos(1450, 300),
         area(),
-        body({ isStatic: true }),
+        body({isStatic: true}),
         color(34, 139, 34),
         layer('game'),
         z(1),
@@ -162,7 +229,7 @@ const startGame = async () => {
         rect(140, 20),
         pos(1750, 260),
         area(),
-        body({ isStatic: true }),
+        body({isStatic: true}),
         color(34, 139, 34),
         layer('game'),
         z(1),
@@ -179,18 +246,18 @@ const startGame = async () => {
         z(2),
         'goal'
       ])
-      
+
       // Coins along the level will be spawned via coin system below
-      
+
       // Player movement
       onKeyDown('left', () => {
         player.move(-player.speed, 0)
       })
-      
+
       onKeyDown('right', () => {
         player.move(player.speed, 0)
       })
-      
+
       onKeyPress('space', () => {
         if (player.isOnGround) {
           player.jump(640)
@@ -205,33 +272,33 @@ const startGame = async () => {
           player.isOnGround = false
         }
       })
-      
+
       // Alternative controls
       onKeyDown('a', () => {
         player.move(-player.speed, 0)
       })
-      
+
       onKeyDown('d', () => {
         player.move(player.speed, 0)
       })
-      
+
       onKeyPress('w', () => {
         if (player.isOnGround) {
           player.jump(640)
           player.isOnGround = false
         }
       })
-      
+
       // Collision detection
       player.onCollide('ground', () => {
         player.isOnGround = true
       })
-      
+
       // Coin collection handled inside coinSystem.makeCoin, but keep a guard for any stray coins
       player.onCollide('coin', (c: any) => {
         // No-op, coinSystem already destroys & updates score
       })
-      
+
       // UI with colors that match the background
       let score = 0
       const scoreText = add([
@@ -242,7 +309,7 @@ const startGame = async () => {
         fixed(),
         z(100),
       ])
-      
+
       let lives = 3
       const livesText = add([
         text('Lives: 3'),
@@ -252,7 +319,7 @@ const startGame = async () => {
         fixed(),
         z(100),
       ])
-      
+
       // Add some decorative elements that match the background
       // Orange flowers like in the background
       add([
@@ -262,7 +329,7 @@ const startGame = async () => {
         layer('game'),
         'decoration'
       ])
-      
+
       add([
         rect(8, 8),
         pos(500, 520),
@@ -270,7 +337,7 @@ const startGame = async () => {
         layer('game'),
         'decoration'
       ])
-      
+
       add([
         rect(8, 8),
         pos(700, 520),
@@ -297,15 +364,24 @@ const startGame = async () => {
       // Coin system: load assets and spawn
       // ------------------------------------
       ;(async () => {
-        const { initCoinSystem, loadCoinAssets, spawnCoinsRandom, onScoreChanged, makeCoin } = await import('../utils/coinSystem')
+        const {
+          initCoinSystem,
+          loadCoinAssets,
+          spawnCoinsRandom,
+          onScoreChanged,
+          makeCoin,
+          playLobbyMusic
+        } = await import('../utils/coinSystem')
         initCoinSystem(gameInstance)
         await loadCoinAssets()
+        // Start lobby music when game scene loads
+        lobbyMusic = playLobbyMusic(0.6)
         // Spawn a few coins near start for immediate visibility
-        makeCoin({ x: 150, y: 500 })
-        makeCoin({ x: 220, y: 500 })
-        makeCoin({ x: 290, y: 500 })
+        makeCoin({x: 150, y: 500})
+        makeCoin({x: 220, y: 500})
+        makeCoin({x: 290, y: 500})
         // And random coins across the level
-        spawnCoinsRandom(15, { x: 0, y: 0, w: LEVEL_WIDTH, h: 600 }, { falling: false })
+        spawnCoinsRandom(15, {x: 0, y: 0, w: LEVEL_WIDTH, h: 600}, {falling: false})
         onScoreChanged((n: number) => {
           score = n
           scoreText.text = `Score: ${score}`
@@ -316,7 +392,7 @@ const startGame = async () => {
     // Simple win scene
     scene('win', () => {
       add([
-        text('You Win! 🎉', { size: 32 }),
+        text('You Win! 🎉', {size: 32}),
         pos(width() / 2, height() / 2 - 20),
         anchor('center'),
         layer('ui'),
@@ -325,7 +401,7 @@ const startGame = async () => {
       ])
 
       add([
-        text('Press R to restart or Enter for Level Select', { size: 16 }),
+        text('Press R to restart or Enter for Level Select', {size: 16}),
         pos(width() / 2, height() / 2 + 20),
         anchor('center'),
         layer('ui'),
@@ -351,7 +427,7 @@ const startGame = async () => {
       ])
 
       const title = add([
-        text('Pinguini Bros', { size: 36 }),
+        text('Pinguini Bros', {size: 36}),
         pos(width() / 2, 180),
         anchor('center'),
         layer('ui'),
@@ -360,7 +436,7 @@ const startGame = async () => {
       ])
 
       const startBtn = add([
-        text('Start', { size: 24 }),
+        text('Start', {size: 24}),
         pos(width() / 2, 260),
         anchor('center'),
         area(),
@@ -388,7 +464,7 @@ const startGame = async () => {
       ])
 
       add([
-        text('Select Level', { size: 28 }),
+        text('Select Level', {size: 28}),
         pos(width() / 2, 120),
         anchor('center'),
         layer('ui'),
@@ -405,7 +481,7 @@ const startGame = async () => {
         const col = (i - 1) % cols
         const row = Math.floor((i - 1) / cols)
         const btn = add([
-          text(String(i), { size: 18 }),
+          text(String(i), {size: 18}),
           pos(startX + col * gapX, startY + row * gapY),
           anchor('center'),
           area(),
@@ -414,15 +490,15 @@ const startGame = async () => {
           z(100),
           `level-${i}`
         ])
-        onClick(`level-${i}`, () => go('game', { level: i }))
+        onClick(`level-${i}`, () => go('game', {level: i}))
       }
 
       onKeyPress('escape', () => go('menu'))
     })
-    
+
     // Start at menu
     go('menu')
-    
+
   } catch (error) {
     console.error('Failed to start game:', error)
     gameStarted.value = false
@@ -433,6 +509,28 @@ onUnmounted(() => {
   if (gameInstance) {
     gameInstance.quit()
   }
+})
+
+// Mount-time wiring for header measurement & visibility audio pause/resume
+onMounted(() => {
+  headerEl.value = document.getElementById('app-title') as HTMLElement | null
+  const visibility = useDocumentVisibility()
+  watch(visibility, (v) => {
+    if (!lobbyMusic) return
+    if (v === 'visible') lobbyMusic.play()
+    else lobbyMusic.pause()
+  })
+
+  // Adjust pixel scale on resize without re-initializing Kaplay
+  watch(
+    () => [winW.value, winH.value, headerH.value],
+    () => {
+      if (!gameInstance) return
+      const s = computeScale()
+      try { gameInstance.scale(s) } catch {}
+    },
+    { flush: 'post' }
+  )
 })
 </script>
 
@@ -451,24 +549,5 @@ onUnmounted(() => {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-.game-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-}
 
-.game-menu {
-  text-align: center;
-  padding: 2rem;
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 12px;
-  border: 2px solid #4a90e2;
-}
 </style>

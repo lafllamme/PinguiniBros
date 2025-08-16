@@ -1,12 +1,17 @@
 <template>
-  <div ref="containerEl" class="game-container">
-    <canvas
-      ref="gameCanvas"
-      v-show="gameStarted"
-      :class="gameStarted && 'game-canvas'"
-    />
-    <div v-if="!gameStarted">
-      <div class="grid grid-cols-1 my-48 justify-center rounded-3xl bg-pureBlack/40 backdrop-blur-lg">
+  <div class="flex flex-col items-center justify-center min-h-screen">
+    <!-- Game Canvas - immer zentriert -->
+    <div ref="containerEl" class="game-container">
+      <canvas
+        ref="gameCanvas"
+        v-show="gameStarted"
+        :class="gameStarted && 'game-canvas'"
+      />
+    </div>
+    
+    <!-- Overlay Menu - nur wenn Spiel nicht gestartet -->
+    <div v-if="!gameStarted" class="absolute inset-0 flex items-center justify-center">
+      <div class="grid grid-cols-1 justify-center rounded-3xl bg-pureBlack/40 backdrop-blur-lg p-8">
         <div class="mx-10">
           <h1
               id="app-title"
@@ -50,8 +55,8 @@ const BASE_W = 800
 const BASE_H = 600
 
 function computeScale(): number {
-  const availW = Math.max(320, Math.floor(winW.value * 0.6))
-  const availH = Math.max(240, Math.floor(winH.value - headerH.value - 32))
+  const availW = Math.max(320, Math.floor(winW.value * 0.8))
+  const availH = Math.max(240, Math.floor(winH.value * 0.8))
   return Math.max(1, Math.min(availW / BASE_W, availH / BASE_H))
 }
 
@@ -61,7 +66,6 @@ const startGame = async () => {
   gameStarted.value = true
 
   try {
-    // Compute a pixel-perfect scale so clicks map correctly (no CSS scaling)
     const scaleFactor = computeScale()
 
     // Initialize KAPLAY
@@ -537,7 +541,9 @@ onMounted(() => {
 <style scoped>
 .game-container {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .game-canvas {

@@ -375,11 +375,11 @@ const startGame = async () => {
       // Coins along the level will be spawned via coin system below
 
       // Helper function to set sprite with correct direction
-      function setPlayerSprite(spriteName: string, animationName: string) {
+      function setPlayerSprite(spriteName: string, animationName: string, force = false) {
         const p: any = player
-        if (p.isAttacking) return
+        if (p.isAttacking && !force) return
         // Avoid resetting the same animation every frame (onKeyDown fires continuously)
-        if (p._lastSprite === spriteName && p._lastAnim === animationName) {
+        if (!force && p._lastSprite === spriteName && p._lastAnim === animationName) {
           player.flipX = !p.facingRight
           return
         }
@@ -484,12 +484,12 @@ const startGame = async () => {
         // full anim time: 6 frames @ 12 fps ≈ 500ms
         setTimeout(() => {
           p.isAttacking = false
-          // return to proper animation
+          // return to proper animation immediately, even if keys are still held
           if (player.isOnGround) {
-            if (player.isMoving) setPlayerSprite('player', 'run')
-            else setPlayerSprite('player_idle', 'idle')
+            if (player.isMoving) setPlayerSprite('player', 'run', true)
+            else setPlayerSprite('player_idle', 'idle', true)
           } else {
-            setPlayerSprite('player_jump', 'jump')
+            setPlayerSprite('player_jump', 'jump', true)
           }
         }, 520)
       }

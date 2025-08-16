@@ -122,9 +122,18 @@ const startGame = async () => {
       onKeyRelease
     } = gameInstance
 
-    // Load the provided PNG background from app/assets/sprites/general/canvas_bg.png
-    const bgUrl = new URL('../assets/sprites/general/canvas_bg.png', import.meta.url).href
-    loadSprite('level_bg', bgUrl)
+    // Global Phase System - Level-based background selection
+    const loadPhaseBackground = (level: number) => {
+      // Levels 1-2 use phase1, level 3+ uses phase2
+      const phaseName = level >= 3 ? 'phase2' : 'phase1'
+      const bgUrl = new URL(`../assets/sprites/general/${phaseName}.png`, import.meta.url).href
+      
+      loadSprite('level_bg', bgUrl)
+      console.log(`🎨 Loading phase background: ${phaseName} for level ${level}`)
+    }
+
+    // Load background based on current level
+    loadPhaseBackground(game.currentLevel)
 
     // Persistent save cookie (score + lives)
     const saveCookie = useCookie('pb_state', {
@@ -225,6 +234,9 @@ const startGame = async () => {
 
     // Create main game scene using extracted GameScene
     scene('game', ({level = 1, lives = 3} = {}) => {
+      // Load phase background for this level
+      loadPhaseBackground(level)
+      
       const chosen = level >= 2 ? Level2 : Level1
       const gs = new GameScene(chosen)
       gs.init()

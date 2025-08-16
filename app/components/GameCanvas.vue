@@ -55,8 +55,8 @@ const BASE_W = 800
 const BASE_H = 600
 
 function computeScale(): number {
-  const availW = Math.max(320, Math.floor(winW.value * 0.8))
-  const availH = Math.max(240, Math.floor(winH.value * 0.8))
+  const availW = Math.max(320, Math.floor(winW.value * 0.9))
+  const availH = Math.max(240, Math.floor(winH.value * 0.9))
   return Math.max(1, Math.min(availW / BASE_W, availH / BASE_H))
 }
 
@@ -127,6 +127,16 @@ const startGame = async () => {
       },
     })
 
+    // Load jump sprite animation
+    const jumpUrl = new URL('../assets/sprites/Owlet_Monster_Jump_8.png', import.meta.url).href
+    loadSprite('player_jump', jumpUrl, {
+      sliceX: 8,
+      sliceY: 1,
+      anims: {
+        jump: {from: 0, to: 7, speed: 12, loop: false},
+      },
+    })
+
     // Remove old coin assets; new ones are loaded via coin system
 
     // Load basic sprites with better colors
@@ -160,12 +170,17 @@ const startGame = async () => {
         body(),
         layer('game'),
         z(10),
-        'player',
-        {
-          speed: 320,
-          isOnGround: false
-        }
+        'player'
       ])
+
+      // Add custom properties to player
+      player.speed = 320
+      player.isOnGround = false
+      player.canDoubleJump = true
+      player.jumpCount = 0
+      player.maxJumps = 2
+      player.jumpForce = 640
+      player.jumpState = false
 
       // start run animation automatically
       player.play('run')
@@ -262,19 +277,38 @@ const startGame = async () => {
         player.move(player.speed, 0)
       })
 
-      onKeyPress('space', () => {
-        if (player.isOnGround) {
-          player.jump(640)
+      // Enhanced jump function
+      function performJump() {
+        if (player.jumpCount < player.maxJumps) {
+          player.jumpCount++
+          player.jumpState = true
           player.isOnGround = false
+          
+          // Switch to jump sprite and play animation
+          player.use(sprite('player_jump'))
+          player.play('jump')
+          
+          // Apply jump force
+          player.jump(player.jumpForce)
+          
+          // Reset to run sprite after jump animation completes
+          setTimeout(() => {
+            if (player.isOnGround) {
+              player.use(sprite('player'))
+              player.play('run')
+              player.jumpState = false
+            }
+          }, 800) // Longer timing to see the jump animation
         }
+      }
+
+      onKeyPress('space', () => {
+        performJump()
       })
 
       // Arrow Up jump as well
       onKeyPress('up', () => {
-        if (player.isOnGround) {
-          player.jump(640)
-          player.isOnGround = false
-        }
+        performJump()
       })
 
       // Alternative controls
@@ -287,15 +321,21 @@ const startGame = async () => {
       })
 
       onKeyPress('w', () => {
-        if (player.isOnGround) {
-          player.jump(640)
-          player.isOnGround = false
-        }
+        performJump()
       })
 
       // Collision detection
       player.onCollide('ground', () => {
         player.isOnGround = true
+        player.jumpCount = 0
+        player.canDoubleJump = true
+        
+        // Switch back to run sprite when landing
+        if (player.jumpState) {
+          player.use(sprite('player'))
+          player.play('run')
+          player.jumpState = false
+        }
       })
 
       // Coin collection handled inside coinSystem.makeCoin, but keep a guard for any stray coins

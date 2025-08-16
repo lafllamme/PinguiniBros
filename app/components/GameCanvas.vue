@@ -23,8 +23,9 @@
         <p class="color-gray-2 text-center antialiased tracking-tight font-medium font-mono">A fun platformer adventure!</p>
         <div class="flex my-4 justify-center">
           <button
-              @click="startGame"
-              class="bg-plum-12 rounded-xl hover:bg-plum-11 font-pixelify transition-colors ease-out duration-200 color-pureWhite font-bold py-3 px-6 transition-colors"
+            autofocus
+            @click="startGame"
+            class="bg-plum-12 rounded-xl hover:bg-plum-11 font-pixelify transition-colors ease-out duration-200 color-pureWhite font-bold py-3 px-6 transition-colors"
           >
             Start Game
           </button>
@@ -1027,6 +1028,22 @@ const startGame = async () => {
       onKeyPress('return', () => go('levelSelect'))
       onKeyPress('kpenter', () => go('levelSelect'))
       onKeyPress('space', () => go('levelSelect'))
+
+      // Quick numeric selection: press 0-9 to start that level directly
+      const startLevel = (n: number) => {
+        const livesInit = (saveCookie.value?.lives ?? 3)
+        go('game', { level: n, lives: livesInit })
+      }
+      onKeyPress('0', () => startLevel(0))
+      onKeyPress('1', () => startLevel(1))
+      onKeyPress('2', () => startLevel(2))
+      onKeyPress('3', () => startLevel(3))
+      onKeyPress('4', () => startLevel(4))
+      onKeyPress('5', () => startLevel(5))
+      onKeyPress('6', () => startLevel(6))
+      onKeyPress('7', () => startLevel(7))
+      onKeyPress('8', () => startLevel(8))
+      onKeyPress('9', () => startLevel(9))
     })
 
     // Level select scene (mock 1..99)
@@ -1070,6 +1087,22 @@ const startGame = async () => {
       }
 
       onKeyPress('escape', () => go('menu'))
+
+      // Numeric keys 0-9 to open that level directly from level selection
+      const startLevel = (n: number) => {
+        const livesInit = (saveCookie.value?.lives ?? 3)
+        go('game', { level: n, lives: livesInit })
+      }
+      onKeyPress('0', () => startLevel(0))
+      onKeyPress('1', () => startLevel(1))
+      onKeyPress('2', () => startLevel(2))
+      onKeyPress('3', () => startLevel(3))
+      onKeyPress('4', () => startLevel(4))
+      onKeyPress('5', () => startLevel(5))
+      onKeyPress('6', () => startLevel(6))
+      onKeyPress('7', () => startLevel(7))
+      onKeyPress('8', () => startLevel(8))
+      onKeyPress('9', () => startLevel(9))
     })
 
     // Start at menu; preload last cookie state to set default level/lives

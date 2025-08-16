@@ -154,6 +154,16 @@ const startGame = async () => {
       },
     })
 
+    // Load attack sprite animation (6 frames)
+    const attackUrl = new URL('../assets/sprites/Owlet_Monster_Attack2_6.png', import.meta.url).href
+    loadSprite('player_attack', attackUrl, {
+      sliceX: 6,
+      sliceY: 1,
+      anims: {
+        attack: { from: 0, to: 5, speed: 12, loop: false },
+      },
+    })
+
     // Load Skeleton enemy sprite-sheet (832x320, 5 rows)
     // Rows: Attack(13), Death(13), Walk(12), Idle(4), Hit(3)
     try {
@@ -207,6 +217,8 @@ const startGame = async () => {
         anchor('center'),
         area(),
         body(),
+        // make player globally larger
+        scale(1.5),
         layer('game'),
         z(10),
         'player'
@@ -225,6 +237,9 @@ const startGame = async () => {
 
       // start idle animation automatically
       player.play('idle')
+      ;(player as any).facingRight = true
+      ;(player as any).isAttacking = false
+      ;(player as any).canDamage = false
 
       // -----------------------------
       // Player Health (Level UI)
@@ -359,9 +374,10 @@ const startGame = async () => {
 
       // Helper function to set sprite with correct direction
       function setPlayerSprite(spriteName: string, animationName: string) {
+        if ((player as any).isAttacking) return
         player.use(sprite(spriteName))
         player.play(animationName)
-        player.flipX = !player.facingRight
+        player.flipX = !(player as any).facingRight
       }
 
       // Player movement
@@ -429,8 +445,50 @@ const startGame = async () => {
         }
       }
 
+      // Player attack with X (scale 1.5 and transient hitbox)
+      function performAttack() {
+        const p: any = player
+        if (p.isAttacking) return
+        p.isAttacking = true
+        // set attack sprite, preserve facing
+        player.use(sprite('player_attack'))
+        player.play('attack')
+        player.flipX = !p.facingRight
+        // hitbox
+        const dir = p.facingRight ? 1 : -1
+        const hb = add([
+          rect(36, 24),
+          pos(player.pos.x + dir * 28, player.pos.y - 4),
+          anchor('center'),
+          area(),
+          layer('game'),
+          z(15),
+          opacity(0),
+          'playerAttack',
+          lifespan(0.25, { fade: 0 })
+        ])
+        // damage enemies on collide
+        hb.onCollide('skeleton', (sk: any) => {
+          sk.trigger?.('playerAttack')
+        })
+        // full anim time: 6 frames @ 12 fps ≈ 500ms
+        setTimeout(() => {
+          p.isAttacking = false
+          // return to proper animation
+          if (player.isOnGround) {
+            if (player.isMoving) setPlayerSprite('player', 'run')
+            else setPlayerSprite('player_idle', 'idle')
+          } else {
+            setPlayerSprite('player_jump', 'jump')
+          }
+        }, 520)
+      }
+
       onKeyPress('space', () => {
         performJump()
+      })
+      onKeyPress('x', () => {
+        performAttack()
       })
 
       // Arrow Up jump as well
@@ -666,9 +724,9 @@ const startGame = async () => {
             sprite('skeleton'),
             pos(x, y),
             anchor('center'),
-            // Slightly larger skeleton for clarity
+            // Slightly larger skeleton for clarity, tighter collider; push collider down to feet (negative y)
             scale(1.5),
-            area({ width: 50, height: 75 }),
+            area({ width: 24, height: 48, offset: { x: 0, y: -22 } }),
             body(),
             layer('game'),
             z(5),
@@ -720,6 +778,11 @@ const startGame = async () => {
           }
           updateSkHp()
 
+          // Desired colliders for ground vs air
+          const groundBox = { w: 24, h: 48, oy: -22 }
+          const airBox = { w: 20, h: 42, oy: -16 }
+          let lastBox: 'ground' | 'air' = 'ground'
+
           onUpdate(() => {
             if (sk.isDead) return
             // Follow hp bar
@@ -727,6 +790,24 @@ const startGame = async () => {
             const uiY = Math.round(sk.pos.y - 60)
             skBg.pos.x = uiX; skBg.pos.y = uiY
             skHp.pos.x = uiX; skHp.pos.y = uiY
+
+            // Dynamically tighten collider while in air
+            const airborne = Math.abs(sk.vel.y) > 1
+            if (airborne && lastBox !== 'air') {
+              if (sk.area) {
+                sk.area.width = airBox.w
+                sk.area.height = airBox.h
+                sk.area.offset = { x: 0, y: airBox.oy }
+              }
+              lastBox = 'air'
+            } else if (!airborne && lastBox !== 'ground') {
+              if (sk.area) {
+                sk.area.width = groundBox.w
+                sk.area.height = groundBox.h
+                sk.area.offset = { x: 0, y: groundBox.oy }
+              }
+              lastBox = 'ground'
+            }
 
             // Simple chase / patrol
             const dx = player.pos.x - sk.pos.x
@@ -742,7 +823,13 @@ const startGame = async () => {
               sk.vel.x = sk.speed * sk.direction
               if (sk.pos.x <= sk.patrolStart) { sk.direction = 1; sk.flipX = false }
               if (sk.pos.x >= sk.patrolEnd) { sk.direction = -1; sk.flipX = true }
-              setSkAnim(Math.abs(sk.vel.x) > 1 ? 'walk' : 'idle')
+              // randomly idle sometimes
+              if (Math.random() < 0.004) {
+                sk.vel.x = 0
+                setSkAnim('idle')
+              } else {
+                setSkAnim(Math.abs(sk.vel.x) > 1 ? 'walk' : 'idle')
+              }
             }
 
             // attack if close

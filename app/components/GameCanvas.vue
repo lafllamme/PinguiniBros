@@ -148,6 +148,23 @@ const startGame = async () => {
       },
     })
 
+    // Load Skeleton enemy sprite-sheet (832x320, 5 rows)
+    // Rows: Attack(13), Death(13), Walk(12), Idle(4), Hit(3)
+    try {
+      const skeletonUrl = new URL('../assets/sprites/Skeleton_Enemy.png', import.meta.url).href
+      loadSprite('skeleton', skeletonUrl, {
+        sliceX: 13,
+        sliceY: 5,
+        anims: {
+          attack: { from: 0, to: 12, speed: 12, loop: false },
+          dead:   { from: 13, to: 25, speed: 8, loop: false },
+          walk:   { from: 26, to: 37, speed: 10, loop: true },
+          idle:   { from: 38, to: 41, speed: 6, loop: true },
+          hit:    { from: 42, to: 44, speed: 10, loop: false },
+        },
+      })
+    } catch {}
+
     // Remove old coin assets; new ones are loaded via coin system
 
     // Load basic sprites with better colors
@@ -197,6 +214,54 @@ const startGame = async () => {
 
       // start idle animation automatically
       player.play('idle')
+
+      // -----------------------------
+      // Player Health (Level UI)
+      // -----------------------------
+      const PLAYER_MAX_HP = 10
+      const PLAYER_HP_BAR_WIDTH = 24
+      const PLAYER_HP_BAR_HEIGHT = 3
+      player.health = PLAYER_MAX_HP
+
+      const hpBg = add([
+        rect(PLAYER_HP_BAR_WIDTH + 4, PLAYER_HP_BAR_HEIGHT + 2),
+        pos(player.pos.x, player.pos.y - 50),
+        anchor('center'),
+        color(0, 0, 0),
+        layer('ui'),
+        z(200),
+        'playerHpBg'
+      ])
+
+      const hpBar = add([
+        rect(PLAYER_HP_BAR_WIDTH, PLAYER_HP_BAR_HEIGHT),
+        pos(player.pos.x, player.pos.y - 50),
+        anchor('center'),
+        color(0, 255, 0),
+        layer('ui'),
+        z(201),
+        'playerHpBar'
+      ])
+
+      function updatePlayerHpBar() {
+        const pct = Math.max(0, player.health) / PLAYER_MAX_HP
+        const w = Math.round(PLAYER_HP_BAR_WIDTH * pct)
+        hpBar.width = w
+        if (pct > 0.6) hpBar.color = color(0, 255, 0)
+        else if (pct > 0.3) hpBar.color = color(255, 255, 0)
+        else hpBar.color = color(255, 0, 0)
+      }
+      updatePlayerHpBar()
+
+      // Follow player (snap to integer pixels)
+      onUpdate(() => {
+        const uiX = Math.round(player.pos.x)
+        const uiY = Math.round(player.pos.y - 50)
+        hpBg.pos.x = uiX
+        hpBg.pos.y = uiY
+        hpBar.pos.x = uiX
+        hpBar.pos.y = uiY
+      })
 
       // Create ground across the entire level width
       for (let x = 0; x < LEVEL_WIDTH; x += 200) {
@@ -447,6 +512,24 @@ const startGame = async () => {
         z(100),
       ])
 
+      // Damage + lives
+      // lives already declared above
+      function applyDamage(dmg: number) {
+        if (player.health <= 0) return
+        player.health = Math.max(0, player.health - dmg)
+        updatePlayerHpBar()
+        if (player.health <= 0) {
+          lives -= 1
+          livesText.text = `Lives: ${lives}`
+          if (lives <= 0) {
+            go('win')
+          } else {
+            player.health = PLAYER_MAX_HP
+            updatePlayerHpBar()
+          }
+        }
+      }
+
       // Add some decorative elements that match the background
       // Orange flowers like in the background
       add([
@@ -472,6 +555,131 @@ const startGame = async () => {
         layer('game'),
         'decoration'
       ])
+
+      // -----------------------------
+      // Level 2 content (skeletons)
+      // -----------------------------
+      if (level >= 2) {
+        const createSkeleton = (x: number, y: number) => {
+          const sk = add([
+            sprite('skeleton'),
+            pos(x, y),
+            anchor('center'),
+            area({ width: 40, height: 60 }),
+            body(),
+            layer('game'),
+            z(5),
+            'enemy',
+            'skeleton',
+            {
+              speed: 80,
+              direction: 1,
+              health: 3,
+              maxHealth: 3,
+              isAttacking: false,
+              isDead: false,
+              patrolStart: x - 100,
+              patrolEnd: x + 100,
+            },
+          ])
+          sk.play('idle')
+
+          // Small hp bar above skeleton
+          const skBg = add([
+            rect(42, 8),
+            pos(x, y - 40),
+            anchor('center'),
+            color(0, 0, 0),
+            layer('ui'),
+            z(19),
+          ])
+          const skHp = add([
+            rect(40, 6),
+            pos(x, y - 40),
+            anchor('center'),
+            color(0, 255, 0),
+            layer('ui'),
+            z(20),
+          ])
+          function updateSkHp() {
+            const p = sk.health / sk.maxHealth
+            skHp.width = Math.round(40 * p)
+            skHp.color = p > 0.5 ? color(0, 255, 0) : p > 0.25 ? color(255, 255, 0) : color(255, 0, 0)
+          }
+          updateSkHp()
+
+          onUpdate(() => {
+            if (sk.isDead) return
+            // Follow hp bar
+            const uiX = Math.round(sk.pos.x)
+            const uiY = Math.round(sk.pos.y - 40)
+            skBg.pos.x = uiX; skBg.pos.y = uiY
+            skHp.pos.x = uiX; skHp.pos.y = uiY
+
+            // Simple chase / patrol
+            const dx = player.pos.x - sk.pos.x
+            const dist = Math.abs(dx)
+            if (dist < 160 && !sk.isAttacking) {
+              // chase
+              sk.direction = dx > 0 ? 1 : -1
+              sk.flipX = sk.direction < 0
+              sk.vel.x = sk.speed * sk.direction
+              sk.play('walk')
+            } else if (!sk.isAttacking) {
+              // patrol
+              sk.play('walk')
+              sk.vel.x = sk.speed * sk.direction
+              if (sk.pos.x <= sk.patrolStart) { sk.direction = 1; sk.flipX = false }
+              if (sk.pos.x >= sk.patrolEnd) { sk.direction = -1; sk.flipX = true }
+            }
+
+            // attack if close
+            if (dist < 60 && !sk.isAttacking) {
+              sk.isAttacking = true
+              sk.vel.x = 0
+              sk.play('attack')
+              const hit = add([
+                rect(60, 40),
+                pos(sk.pos.x + sk.direction * 30, sk.pos.y),
+                anchor('center'),
+                area(),
+                layer('game'),
+                z(10),
+                opacity(0),
+                'skeletonAttack',
+                lifespan(0.35, { fade: 0 })
+              ])
+              // player takes damage when overlapping the attack area
+              player.onCollide('skeletonAttack', () => applyDamage(1))
+              setTimeout(() => {
+                sk.isAttacking = false
+                if (!sk.isDead) sk.play('walk')
+              }, 700)
+            }
+          })
+
+          // When hit by player attack (placeholder tag)
+          sk.onCollide('playerAttack', () => {
+            if (sk.isDead) return
+            sk.health -= 1
+            updateSkHp()
+            sk.play('hit')
+            if (sk.health <= 0) {
+              sk.isDead = true
+              sk.play('dead')
+              sk.vel.x = 0; sk.vel.y = 0
+              destroy(skBg); destroy(skHp)
+              setTimeout(() => destroy(sk), 1600)
+            }
+          })
+
+          return sk
+        }
+
+        createSkeleton(400, 500)
+        createSkeleton(800, 500)
+        createSkeleton(1200, 500)
+      }
 
       // Camera follow (x only), keep background fixed
       onUpdate(() => {

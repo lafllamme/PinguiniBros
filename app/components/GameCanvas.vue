@@ -110,7 +110,8 @@ const startGame = async () => {
       onUpdate,
       lifespan,
       rand,
-      opacity
+      opacity,
+      onKeyRelease
     } = gameInstance
 
     // Load the provided PNG background from app/assets/sprites/canvas_bg.png
@@ -124,6 +125,16 @@ const startGame = async () => {
       sliceY: 1,
       anims: {
         run: {from: 0, to: 5, speed: 8, loop: true},
+      },
+    })
+
+    // Load idle sprite animation
+    const idleUrl = new URL('../assets/sprites/Owlet_Monster_Idle_4.png', import.meta.url).href
+    loadSprite('player_idle', idleUrl, {
+      sliceX: 4,
+      sliceY: 1,
+      anims: {
+        idle: {from: 0, to: 3, speed: 6, loop: true},
       },
     })
 
@@ -163,7 +174,7 @@ const startGame = async () => {
 
       // Create player using your player.png sprite
       const player = add([
-        sprite('player'),
+        sprite('player_idle'),
         pos(50, 450),
         anchor('center'),
         area(),
@@ -181,9 +192,11 @@ const startGame = async () => {
       player.maxJumps = 2
       player.jumpForce = 640
       player.jumpState = false
+      player.facingRight = true
+      player.isMoving = false
 
-      // start run animation automatically
-      player.play('run')
+      // start idle animation automatically
+      player.play('idle')
 
       // Create ground across the entire level width
       for (let x = 0; x < LEVEL_WIDTH; x += 200) {
@@ -268,13 +281,48 @@ const startGame = async () => {
 
       // Coins along the level will be spawned via coin system below
 
+      // Helper function to set sprite with correct direction
+      function setPlayerSprite(spriteName: string, animationName: string) {
+        player.use(sprite(spriteName))
+        player.play(animationName)
+        player.flipX = !player.facingRight
+      }
+
       // Player movement
       onKeyDown('left', () => {
         player.move(-player.speed, 0)
+        player.facingRight = false
+        player.isMoving = true
+        // Switch to run animation when moving
+        if (player.isOnGround && !player.jumpState) {
+          setPlayerSprite('player', 'run')
+        }
       })
 
       onKeyDown('right', () => {
         player.move(player.speed, 0)
+        player.facingRight = true
+        player.isMoving = true
+        // Switch to run animation when moving
+        if (player.isOnGround && !player.jumpState) {
+          setPlayerSprite('player', 'run')
+        }
+      })
+
+      onKeyRelease('left', () => {
+        player.isMoving = false
+        // Switch back to idle when not moving
+        if (player.isOnGround && !player.jumpState) {
+          setPlayerSprite('player_idle', 'idle')
+        }
+      })
+
+      onKeyRelease('right', () => {
+        player.isMoving = false
+        // Switch back to idle when not moving
+        if (player.isOnGround && !player.jumpState) {
+          setPlayerSprite('player_idle', 'idle')
+        }
       })
 
       // Enhanced jump function
@@ -285,18 +333,21 @@ const startGame = async () => {
           player.isOnGround = false
           
           // Switch to jump sprite and play animation
-          player.use(sprite('player_jump'))
-          player.play('jump')
+          setPlayerSprite('player_jump', 'jump')
           
           // Apply jump force
           player.jump(player.jumpForce)
           
-          // Reset to run sprite after jump animation completes
+          // Reset to appropriate sprite after jump animation completes
           setTimeout(() => {
             if (player.isOnGround) {
-              player.use(sprite('player'))
-              player.play('run')
               player.jumpState = false
+              // Switch back to idle or run based on movement state
+              if (player.isMoving) {
+                setPlayerSprite('player', 'run')
+              } else {
+                setPlayerSprite('player_idle', 'idle')
+              }
             }
           }, 800) // Longer timing to see the jump animation
         }
@@ -314,10 +365,38 @@ const startGame = async () => {
       // Alternative controls
       onKeyDown('a', () => {
         player.move(-player.speed, 0)
+        player.facingRight = false
+        player.isMoving = true
+        // Switch to run animation when moving
+        if (player.isOnGround && !player.jumpState) {
+          setPlayerSprite('player', 'run')
+        }
       })
 
       onKeyDown('d', () => {
         player.move(player.speed, 0)
+        player.facingRight = true
+        player.isMoving = true
+        // Switch to run animation when moving
+        if (player.isOnGround && !player.jumpState) {
+          setPlayerSprite('player', 'run')
+        }
+      })
+
+      onKeyRelease('a', () => {
+        player.isMoving = false
+        // Switch back to idle when not moving
+        if (player.isOnGround && !player.jumpState) {
+          setPlayerSprite('player_idle', 'idle')
+        }
+      })
+
+      onKeyRelease('d', () => {
+        player.isMoving = false
+        // Switch back to idle when not moving
+        if (player.isOnGround && !player.jumpState) {
+          setPlayerSprite('player_idle', 'idle')
+        }
       })
 
       onKeyPress('w', () => {
@@ -330,11 +409,15 @@ const startGame = async () => {
         player.jumpCount = 0
         player.canDoubleJump = true
         
-        // Switch back to run sprite when landing
+        // Switch back to appropriate sprite when landing
         if (player.jumpState) {
-          player.use(sprite('player'))
-          player.play('run')
           player.jumpState = false
+          // Switch back to idle or run based on movement state
+          if (player.isMoving) {
+            setPlayerSprite('player', 'run')
+          } else {
+            setPlayerSprite('player_idle', 'idle')
+          }
         }
       })
 

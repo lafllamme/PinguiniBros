@@ -176,7 +176,7 @@ const startGame = async () => {
     setLayers(['bg', 'game', 'ui'], 'game')
 
     // Create main game scene
-    scene('game', ({level = 1} = {}) => {
+    scene('game', ({level = 1, lives = 3} = {}) => {
       const LEVEL_WIDTH = 2400
       // Set gravity
       setGravity(1600)
@@ -502,15 +502,18 @@ const startGame = async () => {
         z(100),
       ])
 
-      let lives = 3
+      // Use lives passed from scene params, fall back to 3
+      if (typeof lives !== 'number') lives = 3
       const livesText = add([
-        text('Lives: 3'),
+        text(''),
         pos(20, 50),
         color(255, 255, 255),
         layer('ui'),
         fixed(),
         z(100),
       ])
+      // set initial lives display based on param
+      livesText.text = `Lives: ${lives}`
 
       // Damage + lives
       // lives already declared above
@@ -522,10 +525,10 @@ const startGame = async () => {
           lives -= 1
           livesText.text = `Lives: ${lives}`
           if (lives <= 0) {
-            go('win')
+            go('gameOver', { level })
           } else {
-            player.health = PLAYER_MAX_HP
-            updatePlayerHpBar()
+            // restart same level with one fewer life
+            go('game', { level, lives })
           }
         }
       }
@@ -749,6 +752,32 @@ const startGame = async () => {
       onKeyPress('return', () => go('levelSelect'))
       onKeyPress('kpenter', () => go('levelSelect'))
       onKeyPress('space', () => go('levelSelect'))
+    })
+
+    // Game over scene
+    scene('gameOver', ({ level = 1 } = {}) => {
+      add([
+        text('Game Over! 💀', {size: 32}),
+        pos(width() / 2, height() / 2 - 20),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(101),
+      ])
+
+      add([
+        text('Press Enter to retry level, or M for Menu', {size: 16}),
+        pos(width() / 2, height() / 2 + 20),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(101),
+      ])
+
+      onKeyPress('enter', () => go('game', { level, lives: 3 }))
+      onKeyPress('return', () => go('game', { level, lives: 3 }))
+      onKeyPress('kpenter', () => go('game', { level, lives: 3 }))
+      onKeyPress('m', () => go('menu'))
     })
 
     // Menu scene -> Go to level select

@@ -197,89 +197,7 @@ const startGame = async () => {
       ;(player as any)._lastSprite = 'player_idle'
       ;(player as any)._lastAnim = 'idle'
 
-      // -----------------------------
-      // Player Health (Level UI)
-      // -----------------------------
-      const PLAYER_HP_BAR_WIDTH = 24
-      const PLAYER_HP_BAR_HEIGHT = 3
-      // Synchronize local health with game store
-      player.health = game.player.hp
-
-      const hpBg = add([
-        rect(PLAYER_HP_BAR_WIDTH + 4, PLAYER_HP_BAR_HEIGHT + 2),
-        pos(player.pos.x, player.pos.y - 50),
-        anchor('center'),
-        color(0, 0, 0),
-        layer('ui'),
-        z(200),
-        'playerHpBg'
-      ])
-
-      let hpBar = add([
-        rect(PLAYER_HP_BAR_WIDTH, PLAYER_HP_BAR_HEIGHT),
-        pos(player.pos.x - PLAYER_HP_BAR_WIDTH/2, player.pos.y - 50),
-        anchor('left'),
-        color(0, 255, 0),
-        layer('ui'),
-        z(201),
-        'playerHpBar'
-      ])
-
-      function updatePlayerHpBar() {
-        const pct = Math.max(0, Math.min(1, player.health / game.player.maxHp))
-        const w = Math.round(PLAYER_HP_BAR_WIDTH * pct)
-        
-        // Update color based on health percentage
-        let newColor
-        if (pct > 0.6) {
-          newColor = color(0, 255, 0) // Green
-          console.log(`🟢 Player HP: ${player.health}/${game.player.maxHp} (${(pct*100).toFixed(1)}%) - Setting GREEN color`)
-        } else if (pct > 0.3) {
-          newColor = color(255, 255, 0) // Yellow
-          console.log(`🟡 Player HP: ${player.health}/${game.player.maxHp} (${(pct*100).toFixed(1)}%) - Setting YELLOW color`)
-        } else {
-          newColor = color(255, 0, 0) // Red
-          console.log(`🔴 Player HP: ${player.health}/${game.player.maxHp} (${(pct*100).toFixed(1)}%) - Setting RED color`)
-        }
-        
-        // Destroy old HP bar and create new one with correct width and color
-        destroy(hpBar)
-        
-        const pl = get('player')[0]
-        if (!pl) return
-        
-        const uiX = Math.round(pl.pos.x)
-        const uiY = Math.round(pl.pos.y - 50)
-        
-        // Create new HP bar with correct width and color
-        const newHpBar = add([
-          rect(w, PLAYER_HP_BAR_HEIGHT),
-          pos(uiX - PLAYER_HP_BAR_WIDTH/2, uiY),
-          anchor('left'),
-          newColor,
-          layer('ui'),
-          z(201),
-          'playerHpBar'
-        ])
-        
-        // Update the reference
-        hpBar = newHpBar
-        
-        console.log(`📊 Player HP Bar - Width: ${w}/${PLAYER_HP_BAR_WIDTH}, Color: ${newColor}, Percentage: ${(pct*100).toFixed(1)}%`)
-      }
-      updatePlayerHpBar()
-
-      // Follow player (snap to integer pixels)
-      onUpdate(() => {
-        const pl = get('player')[0]
-        if (!pl || !hpBar) return
-        const uiX = Math.round(pl.pos.x)
-        const uiY = Math.round(pl.pos.y - 50)
-        hpBg.pos.x = uiX
-        hpBg.pos.y = uiY
-        hpBar.pos.x = uiX - PLAYER_HP_BAR_WIDTH/2
-        hpBar.pos.y = uiY
-      })
+      // Player Health UI is created and managed inside GameScene.createPlayerUI()
 
       // Create ground across the entire level width
       for (let x = 0; x < chosen.width; x += 200) {
@@ -803,7 +721,8 @@ const startGame = async () => {
         player.health = game.player.hp
         
         console.log(`💔 After damage: Local HP: ${player.health}, Game store HP: ${game.player.hp}`)
-        updatePlayerHpBar()
+        // Notify GameScene HP system for instant update and regen reset
+        try { ;(window as any).__pb_onPlayerDamage?.(dmg) } catch {}
         if (player.health <= 0) {
           console.log(`💀 Player died! Triggering death animation...`)
           // Play explosion sound

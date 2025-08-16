@@ -515,6 +515,87 @@ const startGame = async () => {
       // set initial lives display based on param
       livesText.text = `Lives: ${lives}`
 
+      // -----------------------------
+      // Pause system
+      // -----------------------------
+      let gamePaused = false
+      let soundMuted = false
+      let pauseOverlay: any = null
+      let pauseTitle: any = null
+      let pauseSoundBtn: any = null
+      let pauseMenuBtn: any = null
+
+      function showPause() {
+        if (gamePaused) return
+        gamePaused = true
+        // Dim screen
+        pauseOverlay = add([
+          rect(width(), height()),
+          pos(width() / 2, height() / 2),
+          anchor('center'),
+          color(0, 0, 0, 0.6),
+          layer('ui'),
+          fixed(),
+          z(999)
+        ])
+        pauseTitle = add([
+          text('Paused', { size: 24 }),
+          pos(width() / 2, height() / 2 - 40),
+          anchor('center'),
+          layer('ui'),
+          fixed(),
+          z(1000),
+        ])
+        pauseSoundBtn = add([
+          text(soundMuted ? 'Sound: Off' : 'Sound: On', { size: 18 }),
+          pos(width() / 2, height() / 2),
+          anchor('center'),
+          area(),
+          layer('ui'),
+          fixed(),
+          z(1000),
+          'pauseSoundBtn'
+        ])
+        pauseMenuBtn = add([
+          text('Back to Menu', { size: 18 }),
+          pos(width() / 2, height() / 2 + 40),
+          anchor('center'),
+          area(),
+          layer('ui'),
+          fixed(),
+          z(1000),
+          'pauseMenuBtn'
+        ])
+      }
+
+      function hidePause() {
+        if (!gamePaused) return
+        gamePaused = false
+        if (pauseOverlay) destroy(pauseOverlay)
+        if (pauseTitle) destroy(pauseTitle)
+        if (pauseSoundBtn) destroy(pauseSoundBtn)
+        if (pauseMenuBtn) destroy(pauseMenuBtn)
+        pauseOverlay = pauseTitle = pauseSoundBtn = pauseMenuBtn = null
+      }
+
+      onClick('pauseSoundBtn', () => {
+        soundMuted = !soundMuted
+        if (typeof lobbyMusic?.pause === 'function' && typeof lobbyMusic?.play === 'function') {
+          if (soundMuted) lobbyMusic.pause()
+          else lobbyMusic.play()
+        }
+        if (pauseSoundBtn) pauseSoundBtn.text = soundMuted ? 'Sound: Off' : 'Sound: On'
+      })
+
+      onClick('pauseMenuBtn', () => {
+        go('menu')
+      })
+
+      onKeyPress('escape', () => {
+        if (gamePaused) hidePause()
+        else showPause()
+      })
+
       // Damage + lives
       // lives already declared above
       function applyDamage(dmg: number) {

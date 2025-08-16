@@ -100,9 +100,10 @@ export class GameScene {
   }
 
   private createEnemies() {
-    for (const e of this.level.enemies) {
-      this.createSkeleton(e.x, e.y)
-    }
+    // Disabled - skeletons are now created in GameCanvas.vue
+    // for (const e of this.level.enemies) {
+    //   this.createSkeleton(e.x, e.y)
+    // }
   }
 
   private createSkeleton(x: number, y: number) {
@@ -110,6 +111,7 @@ export class GameScene {
       sprite('skeleton'),
       pos(x, y),
       anchor('center'),
+      scale(1.5), // Match player scale for consistency
       area(),
       body(),
       layer('game'),

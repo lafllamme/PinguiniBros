@@ -904,7 +904,7 @@ const startGame = async () => {
             sprite('skeleton'),
             pos(x, y),
             anchor('center'),
-            // Slightly larger skeleton for clarity, tighter collider; push collider down to feet (negative y)
+            // Match player scale for consistency
             scale(1.5),
             area({ width: 24, height: 48, offset: { x: 0, y: -22 } }),
             body(),
@@ -1023,26 +1023,47 @@ const startGame = async () => {
               lastBox = 'ground'
             }
 
-            // Simple chase / patrol
+            // Enhanced chase / patrol with idle states
             const dx = player.pos.x - sk.pos.x
             const dist = Math.abs(dx)
+            
             if (dist < 160 && !sk.isAttacking) {
-              // chase
+              // chase player
               sk.direction = dx > 0 ? 1 : -1
               sk.flipX = sk.direction < 0
               sk.vel.x = sk.speed * sk.direction
               setSkAnim('walk')
             } else if (!sk.isAttacking) {
-              // patrol
-              sk.vel.x = sk.speed * sk.direction
-              if (sk.pos.x <= sk.patrolStart) { sk.direction = 1; sk.flipX = false }
-              if (sk.pos.x >= sk.patrolEnd) { sk.direction = -1; sk.flipX = true }
-              // randomly idle sometimes
-              if (Math.random() < 0.004) {
+              // patrol behavior
+              if (sk.pos.x <= sk.patrolStart) { 
+                sk.direction = 1; 
+                sk.flipX = false 
+              }
+              if (sk.pos.x >= sk.patrolEnd) { 
+                sk.direction = -1; 
+                sk.flipX = true 
+              }
+              
+              // Add idle periods during patrol
+              if (!sk.idleTimer) sk.idleTimer = 0
+              if (!sk.isIdle) sk.isIdle = false
+              
+              if (sk.isIdle) {
                 sk.vel.x = 0
+                sk.idleTimer += 1/60 // Assuming 60 FPS
                 setSkAnim('idle')
+                if (sk.idleTimer > 120) { // Idle for ~2 seconds (120 frames at 60fps)
+                  sk.isIdle = false
+                  sk.idleTimer = 0
+                }
               } else {
-                setSkAnim(Math.abs(sk.vel.x) > 1 ? 'walk' : 'idle')
+                sk.vel.x = sk.speed * sk.direction
+                setSkAnim('walk')
+                // Randomly go idle
+                if (Math.random() < 0.002) { // 0.2% chance per frame
+                  sk.isIdle = true
+                  sk.idleTimer = 0
+                }
               }
             }
 
@@ -1086,6 +1107,37 @@ const startGame = async () => {
               destroy(skBg); destroy(skHp)
               setTimeout(() => destroy(sk), 1600)
             }
+          })
+
+          // Collision detection for walls/platforms - change direction when hitting obstacles
+          let lastCollisionTime = 0
+          sk.onCollide('ground', () => {
+            if (sk.isDead) return
+            const now = Date.now()
+            if (now - lastCollisionTime < 500) return // Prevent rapid direction changes
+            
+            console.log(`🔄 Skeleton hit wall, changing direction from ${sk.direction} to ${-sk.direction}`)
+            sk.direction = -sk.direction
+            sk.flipX = sk.direction < 0
+            lastCollisionTime = now
+            
+            // Move slightly away from the wall to prevent getting stuck
+            sk.pos.x += sk.direction * 5
+          })
+
+          // Also detect collision with other enemies to prevent stacking
+          sk.onCollide('enemy', (otherEnemy: any) => {
+            if (sk.isDead || otherEnemy === sk) return
+            const now = Date.now()
+            if (now - lastCollisionTime < 500) return // Prevent rapid direction changes
+            
+            console.log(`🔄 Skeleton hit another enemy, changing direction`)
+            sk.direction = -sk.direction
+            sk.flipX = sk.direction < 0
+            lastCollisionTime = now
+            
+            // Move slightly away from the other enemy
+            sk.pos.x += sk.direction * 5
           })
 
           return sk

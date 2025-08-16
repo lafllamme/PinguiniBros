@@ -843,13 +843,13 @@ const startGame = async () => {
             }
 
             // attack if close
-            if (dist < 70 && !sk.isAttacking) {
+            if (dist < 80 && !sk.isAttacking) {
               sk.isAttacking = true
               sk.vel.x = 0
               setSkAnim('attack')
               const hit = add([
-                rect(70, 50),
-                pos(sk.pos.x + sk.direction * 35, sk.pos.y),
+                rect(90, 50),
+                pos(sk.pos.x + sk.direction * 45, sk.pos.y),
                 anchor('center'),
                 area(),
                 layer('game'),

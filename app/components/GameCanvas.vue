@@ -162,11 +162,16 @@ const startGame = async () => {
         sliceX: 13,
         sliceY: 5,
         anims: {
+          // Row 0: 0..12 (13)
           attack: { from: 0, to: 12, speed: 12, loop: false },
+          // Row 1: 13..25 (13)
           dead:   { from: 13, to: 25, speed: 8, loop: false },
-          walk:   { from: 26, to: 37, speed: 10, loop: true },
-          idle:   { from: 38, to: 41, speed: 6, loop: true },
-          hit:    { from: 42, to: 44, speed: 10, loop: false },
+          // Row 2: 26..37 (12 valid frames)
+          walk:   { from: 26, to: 37, speed: 12, loop: true },
+          // Row 3 starts at index 39, 4 frames → 39..42
+          idle:   { from: 39, to: 42, speed: 8, loop: true },
+          // Row 4 starts at index 52, 3 frames → 52..54
+          hit:    { from: 52, to: 54, speed: 12, loop: false },
         },
       })
     } catch {}
@@ -661,7 +666,9 @@ const startGame = async () => {
             sprite('skeleton'),
             pos(x, y),
             anchor('center'),
-            area({ width: 40, height: 60 }),
+            // Slightly larger skeleton for clarity
+            scale(1.5),
+            area({ width: 50, height: 75 }),
             body(),
             layer('game'),
             z(5),
@@ -679,11 +686,20 @@ const startGame = async () => {
             },
           ])
           sk.play('idle')
+          ;(sk as any)._lastAnim = 'idle'
+
+          function setSkAnim(name: string) {
+            const last = (sk as any)._lastAnim
+            if (last !== name) {
+              sk.play(name)
+              ;(sk as any)._lastAnim = name
+            }
+          }
 
           // Small hp bar above skeleton
           const skBg = add([
             rect(42, 8),
-            pos(x, y - 40),
+            pos(x, y - 60),
             anchor('center'),
             color(0, 0, 0),
             layer('ui'),
@@ -691,7 +707,7 @@ const startGame = async () => {
           ])
           const skHp = add([
             rect(40, 6),
-            pos(x, y - 40),
+            pos(x, y - 60),
             anchor('center'),
             color(0, 255, 0),
             layer('ui'),
@@ -708,7 +724,7 @@ const startGame = async () => {
             if (sk.isDead) return
             // Follow hp bar
             const uiX = Math.round(sk.pos.x)
-            const uiY = Math.round(sk.pos.y - 40)
+            const uiY = Math.round(sk.pos.y - 60)
             skBg.pos.x = uiX; skBg.pos.y = uiY
             skHp.pos.x = uiX; skHp.pos.y = uiY
 
@@ -720,23 +736,23 @@ const startGame = async () => {
               sk.direction = dx > 0 ? 1 : -1
               sk.flipX = sk.direction < 0
               sk.vel.x = sk.speed * sk.direction
-              sk.play('walk')
+              setSkAnim('walk')
             } else if (!sk.isAttacking) {
               // patrol
-              sk.play('walk')
               sk.vel.x = sk.speed * sk.direction
               if (sk.pos.x <= sk.patrolStart) { sk.direction = 1; sk.flipX = false }
               if (sk.pos.x >= sk.patrolEnd) { sk.direction = -1; sk.flipX = true }
+              setSkAnim(Math.abs(sk.vel.x) > 1 ? 'walk' : 'idle')
             }
 
             // attack if close
-            if (dist < 60 && !sk.isAttacking) {
+            if (dist < 70 && !sk.isAttacking) {
               sk.isAttacking = true
               sk.vel.x = 0
-              sk.play('attack')
+              setSkAnim('attack')
               const hit = add([
-                rect(60, 40),
-                pos(sk.pos.x + sk.direction * 30, sk.pos.y),
+                rect(70, 50),
+                pos(sk.pos.x + sk.direction * 35, sk.pos.y),
                 anchor('center'),
                 area(),
                 layer('game'),
@@ -745,11 +761,11 @@ const startGame = async () => {
                 'skeletonAttack',
                 lifespan(0.35, { fade: 0 })
               ])
-              // player takes damage when overlapping the attack area
-              player.onCollide('skeletonAttack', () => applyDamage(1))
+              // damage player when overlapping this attack hitbox
+              hit.onCollide('player', () => applyDamage(1))
               setTimeout(() => {
                 sk.isAttacking = false
-                if (!sk.isDead) sk.play('walk')
+                if (!sk.isDead) setSkAnim('walk')
               }, 700)
             }
           })
@@ -759,10 +775,10 @@ const startGame = async () => {
             if (sk.isDead) return
             sk.health -= 1
             updateSkHp()
-            sk.play('hit')
+            setSkAnim('hit')
             if (sk.health <= 0) {
               sk.isDead = true
-              sk.play('dead')
+              setSkAnim('dead')
               sk.vel.x = 0; sk.vel.y = 0
               destroy(skBg); destroy(skHp)
               setTimeout(() => destroy(sk), 1600)

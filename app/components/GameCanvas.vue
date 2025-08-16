@@ -222,6 +222,40 @@ const startGame = async () => {
       })
     } catch {}
 
+    // Load character sound effects
+    const owlHit1Url = new URL('../assets/sounds/character/owl/hits/1.ogg', import.meta.url).href
+    const owlHit2Url = new URL('../assets/sounds/character/owl/hits/2.ogg', import.meta.url).href
+    const owlHit3Url = new URL('../assets/sounds/character/owl/hits/3.ogg', import.meta.url).href
+    const owlHit4Url = new URL('../assets/sounds/character/owl/hits/4.ogg', import.meta.url).href
+    const owlHit5Url = new URL('../assets/sounds/character/owl/hits/5.ogg', import.meta.url).href
+    const owlHit6Url = new URL('../assets/sounds/character/owl/hits/6.ogg', import.meta.url).href
+    const owlHit7Url = new URL('../assets/sounds/character/owl/hits/7.ogg', import.meta.url).href
+    const owlHit8Url = new URL('../assets/sounds/character/owl/hits/8.ogg', import.meta.url).href
+    const owlHit9Url = new URL('../assets/sounds/character/owl/hits/9.ogg', import.meta.url).href
+    const owlHit10Url = new URL('../assets/sounds/character/owl/hits/10.ogg', import.meta.url).href
+    const owlHit11Url = new URL('../assets/sounds/character/owl/hits/11.ogg', import.meta.url).href
+    const owlHit12Url = new URL('../assets/sounds/character/owl/hits/12.ogg', import.meta.url).href
+    const owlHurtUrl = new URL('../assets/sounds/character/owl/hurt.wav', import.meta.url).href
+    const owlJumpUrl = new URL('../assets/sounds/character/owl/jump.wav', import.meta.url).href
+    const owlExplosionUrl = new URL('../assets/sounds/character/owl/explosion.wav', import.meta.url).href
+
+    // Load all character sounds
+    loadSound('owl_hit_1', owlHit1Url)
+    loadSound('owl_hit_2', owlHit2Url)
+    loadSound('owl_hit_3', owlHit3Url)
+    loadSound('owl_hit_4', owlHit4Url)
+    loadSound('owl_hit_5', owlHit5Url)
+    loadSound('owl_hit_6', owlHit6Url)
+    loadSound('owl_hit_7', owlHit7Url)
+    loadSound('owl_hit_8', owlHit8Url)
+    loadSound('owl_hit_9', owlHit9Url)
+    loadSound('owl_hit_10', owlHit10Url)
+    loadSound('owl_hit_11', owlHit11Url)
+    loadSound('owl_hit_12', owlHit12Url)
+    loadSound('owl_hurt', owlHurtUrl)
+    loadSound('owl_jump', owlJumpUrl)
+    loadSound('owl_explosion', owlExplosionUrl)
+
     // Remove old coin assets; new ones are loaded via coin system
 
     // Load basic sprites with better colors
@@ -438,6 +472,16 @@ const startGame = async () => {
 
       // Coins along the level will be spawned via coin system below
 
+      // Helper function to play random hit sound
+      function playRandomHitSound() {
+        const hitSounds = [
+          'owl_hit_1', 'owl_hit_2', 'owl_hit_3', 'owl_hit_4', 'owl_hit_5', 'owl_hit_6',
+          'owl_hit_7', 'owl_hit_8', 'owl_hit_9', 'owl_hit_10', 'owl_hit_11', 'owl_hit_12'
+        ]
+        const randomSound = hitSounds[Math.floor(Math.random() * hitSounds.length)]
+        play(randomSound, { volume: 0.3 })
+      }
+
       // Helper function to set sprite with correct direction
       function setPlayerSprite(spriteName: string, animationName: string, force = false) {
         const p: any = player
@@ -543,6 +587,9 @@ const startGame = async () => {
           pl.jumpState = true
           pl.isOnGround = false
           
+          // Play jump sound
+          play('owl_jump', { volume: 0.3 })
+          
           // Switch to jump sprite and play animation
           setPlayerSprite('player_jump', 'jump')
           
@@ -572,6 +619,10 @@ const startGame = async () => {
         if (!p || p.isDead) return
         if (p.isAttacking) return
         p.isAttacking = true
+        
+        // Play random hit sound
+        playRandomHitSound()
+        
         // set attack sprite, preserve facing
         p.use(sprite('player_attack'))
         p.play('attack')
@@ -851,6 +902,9 @@ const startGame = async () => {
         if (player.health <= 0 || player.isDead) return
         console.log(`⚔️ Applying damage: ${dmg}, Current HP: ${player.health}`)
         
+        // Play hurt sound
+        play('owl_hurt', { volume: 0.4 })
+        
         // Update game store first
         game.damagePlayer(dmg)
         // Then sync local health with game store
@@ -860,6 +914,9 @@ const startGame = async () => {
         updatePlayerHpBar()
         if (player.health <= 0) {
           console.log(`💀 Player died! Triggering death animation...`)
+          // Play explosion sound
+          play('owl_explosion', { volume: 0.5 })
+          
           // Trigger death animation
           player.isDead = true
           setPlayerSprite('player_death', 'death', true)

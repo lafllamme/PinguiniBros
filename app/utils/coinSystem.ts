@@ -92,7 +92,7 @@ function notifyScore() {
 export async function loadCoinAssets() {
   const coinUrl = new URL('../assets/sprites/items/coin.png', import.meta.url).href
   const lobbyUrl = new URL('../assets/music/lobby_1.ogg', import.meta.url).href
-  const coinFlacUrl = new URL('../assets/sounds/items/coin.flac', import.meta.url).href
+  const coinWavUrl = new URL('../assets/sounds/items/coin.wav', import.meta.url).href
 
   // Animated coin: 10 frames @ 12 FPS, loop
   await K.loadSprite('coin', coinUrl, {
@@ -103,9 +103,9 @@ export async function loadCoinAssets() {
     },
   })
 
-  // Sounds: prefer external FLAC coin, fallback to tiny generated WAV if not supported
+  // Sounds: prefer external WAV coin, fallback to tiny generated WAV if not supported
   try {
-    await K.loadSound('coin', coinFlacUrl)
+    await K.loadSound('coin', coinWavUrl)
     coinSfxReady = true
   } catch {
     try {

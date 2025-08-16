@@ -71,13 +71,8 @@ export class AssetLoader {
     }
 
     try {
-      // For now, we'll use placeholder data URLs
-      // In a real game, you'd load actual sprite files
-      const placeholderData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-      
-      loadSprite(config.name, placeholderData)
+      // Mark as loaded (actual loading is done in GameCanvas.vue)
       this.loadedAssets.add(`sprite_${config.name}`)
-      
       console.log(`📷 Loaded sprite: ${config.name}`)
     } catch (error) {
       console.error(`❌ Failed to load sprite: ${config.name}`, error)
@@ -91,12 +86,8 @@ export class AssetLoader {
     }
 
     try {
-      // Placeholder sound data
-      const placeholderData = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT'
-      
-      loadSound(config.name, placeholderData)
+      // Mark as loaded (actual loading is done in GameCanvas.vue)
       this.loadedAssets.add(`sound_${config.name}`)
-      
       console.log(`🔊 Loaded sound: ${config.name}`)
     } catch (error) {
       console.error(`❌ Failed to load sound: ${config.name}`, error)
@@ -110,12 +101,8 @@ export class AssetLoader {
     }
 
     try {
-      // Placeholder music data
-      const placeholderData = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT'
-      
-      loadSound(config.name, placeholderData)
+      // Mark as loaded (actual loading is done in GameCanvas.vue)
       this.loadedAssets.add(`music_${config.name}`)
-      
       console.log(`🎵 Loaded music: ${config.name}`)
     } catch (error) {
       console.error(`❌ Failed to load music: ${config.name}`, error)
@@ -149,7 +136,22 @@ export const defaultAssets: AssetConfig = {
     { name: 'skeleton_atlas', path: '/assets/sprites/characters/skeleton/skeleton_enemy.png' }
   ],
   sounds: [
-    { name: 'coin', path: '/assets/sounds/items/coin.flac', volume: 0.2 }
+    { name: 'coin', path: '/assets/sounds/items/coin.wav', volume: 0.2 },
+    { name: 'owl_hit_1', path: '/assets/sounds/character/owl/hits/1.ogg', volume: 0.3 },
+    { name: 'owl_hit_2', path: '/assets/sounds/character/owl/hits/2.ogg', volume: 0.3 },
+    { name: 'owl_hit_3', path: '/assets/sounds/character/owl/hits/3.ogg', volume: 0.3 },
+    { name: 'owl_hit_4', path: '/assets/sounds/character/owl/hits/4.ogg', volume: 0.3 },
+    { name: 'owl_hit_5', path: '/assets/sounds/character/owl/hits/5.ogg', volume: 0.3 },
+    { name: 'owl_hit_6', path: '/assets/sounds/character/owl/hits/6.ogg', volume: 0.3 },
+    { name: 'owl_hit_7', path: '/assets/sounds/character/owl/hits/7.ogg', volume: 0.3 },
+    { name: 'owl_hit_8', path: '/assets/sounds/character/owl/hits/8.ogg', volume: 0.3 },
+    { name: 'owl_hit_9', path: '/assets/sounds/character/owl/hits/9.ogg', volume: 0.3 },
+    { name: 'owl_hit_10', path: '/assets/sounds/character/owl/hits/10.ogg', volume: 0.3 },
+    { name: 'owl_hit_11', path: '/assets/sounds/character/owl/hits/11.ogg', volume: 0.3 },
+    { name: 'owl_hit_12', path: '/assets/sounds/character/owl/hits/12.ogg', volume: 0.3 },
+    { name: 'owl_hurt', path: '/assets/sounds/character/owl/hurt.wav', volume: 0.4 },
+    { name: 'owl_jump', path: '/assets/sounds/character/owl/jump.wav', volume: 0.3 },
+    { name: 'owl_explosion', path: '/assets/sounds/character/owl/explosion.wav', volume: 0.5 }
   ],
   music: [
     { name: 'lobby_1', path: '/assets/music/lobby_1.ogg', volume: 0.6, loop: true }

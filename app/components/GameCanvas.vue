@@ -197,6 +197,21 @@ const startGame = async () => {
       ;(player as any)._lastSprite = 'player_idle'
       ;(player as any)._lastAnim = 'idle'
 
+      // Prevent pushing enemies around: block movement when colliding with them
+      let blockLeft = false
+      let blockRight = false
+      player.onCollide('enemy', (e: any) => {
+        if (!e) return
+        const dx = e.pos.x - player.pos.x
+        if (dx > 0) blockRight = true
+        else blockLeft = true
+        player.vel.x = 0
+      })
+      player.onCollideEnd('enemy', () => {
+        blockLeft = false
+        blockRight = false
+      })
+
       // Player Health UI is created and managed inside GameScene.createPlayerUI()
 
       // Create ground across the entire level width
@@ -313,22 +328,12 @@ const startGame = async () => {
       onKeyDown('left', () => {
         const pl = get('player')[0]
         if (!pl || pl.isDead) return
-        
-        // Check if there's an enemy in the way
-        const enemies = get('enemy')
-        let canMove = true
-        for (const enemy of enemies) {
-          const dx = pl.pos.x - enemy.pos.x
-          const dy = Math.abs(pl.pos.y - enemy.pos.y)
-          // If enemy is close and in the direction we want to move
-          if (dx > 0 && dx < 50 && dy < 30) {
-            canMove = false
-            console.log(`🚫 Blocked left movement - Enemy at dx: ${dx}, dy: ${dy}`)
-            break
-          }
+        if (blockLeft) {
+          pl.isMoving = false
+          if (pl.isOnGround && !pl.jumpState) setPlayerSprite('player_idle', 'idle')
+          return
         }
-        
-        if (canMove) {
+        {
           pl.move(-pl.speed, 0)
           pl.facingRight = false
           pl.isMoving = true
@@ -342,22 +347,12 @@ const startGame = async () => {
       onKeyDown('right', () => {
         const pl = get('player')[0]
         if (!pl || pl.isDead) return
-        
-        // Check if there's an enemy in the way
-        const enemies = get('enemy')
-        let canMove = true
-        for (const enemy of enemies) {
-          const dx = enemy.pos.x - pl.pos.x
-          const dy = Math.abs(pl.pos.y - enemy.pos.y)
-          // If enemy is close and in the direction we want to move
-          if (dx > 0 && dx < 50 && dy < 30) {
-            canMove = false
-            console.log(`🚫 Blocked right movement - Enemy at dx: ${dx}, dy: ${dy}`)
-            break
-          }
+        if (blockRight) {
+          pl.isMoving = false
+          if (pl.isOnGround && !pl.jumpState) setPlayerSprite('player_idle', 'idle')
+          return
         }
-        
-        if (canMove) {
+        {
           pl.move(pl.speed, 0)
           pl.facingRight = true
           pl.isMoving = true
@@ -489,22 +484,12 @@ const startGame = async () => {
       onKeyDown('a', () => {
         const pl = get('player')[0]
         if (!pl || pl.isDead) return
-        
-        // Check if there's an enemy in the way
-        const enemies = get('enemy')
-        let canMove = true
-        for (const enemy of enemies) {
-          const dx = pl.pos.x - enemy.pos.x
-          const dy = Math.abs(pl.pos.y - enemy.pos.y)
-          // If enemy is close and in the direction we want to move
-          if (dx > 0 && dx < 50 && dy < 30) {
-            canMove = false
-            console.log(`🚫 Blocked A key movement - Enemy at dx: ${dx}, dy: ${dy}`)
-            break
-          }
+        if (blockLeft) {
+          pl.isMoving = false
+          if (pl.isOnGround && !pl.jumpState) setPlayerSprite('player_idle', 'idle')
+          return
         }
-        
-        if (canMove) {
+        {
           pl.move(-pl.speed, 0)
           pl.facingRight = false
           pl.isMoving = true
@@ -518,22 +503,12 @@ const startGame = async () => {
       onKeyDown('d', () => {
         const pl = get('player')[0]
         if (!pl || pl.isDead) return
-        
-        // Check if there's an enemy in the way
-        const enemies = get('enemy')
-        let canMove = true
-        for (const enemy of enemies) {
-          const dx = enemy.pos.x - pl.pos.x
-          const dy = Math.abs(pl.pos.y - enemy.pos.y)
-          // If enemy is close and in the direction we want to move
-          if (dx > 0 && dx < 50 && dy < 30) {
-            canMove = false
-            console.log(`🚫 Blocked D key movement - Enemy at dx: ${dx}, dy: ${dy}`)
-            break
-          }
+        if (blockRight) {
+          pl.isMoving = false
+          if (pl.isOnGround && !pl.jumpState) setPlayerSprite('player_idle', 'idle')
+          return
         }
-        
-        if (canMove) {
+        {
           pl.move(pl.speed, 0)
           pl.facingRight = true
           pl.isMoving = true

@@ -45,7 +45,18 @@ export class GameScene {
   }
 
   private createPlayer() {
-    const p = add([sprite('player_idle'), pos(this.level.playerStart.x, this.level.playerStart.y), anchor('center'), area(), body(), scale(1.5), layer('game'), z(10), 'player'])
+    // Use default collider; we'll tighten enemies instead to reduce the gap
+    const p = add([
+      sprite('player_idle'),
+      pos(this.level.playerStart.x, this.level.playerStart.y),
+      anchor('center'),
+      area(),
+      body(),
+      scale(1.5),
+      layer('game'),
+      z(10),
+      'player'
+    ])
     p.play('idle')
   }
 

@@ -25,7 +25,7 @@
           <button
             autofocus
             @click="startGame"
-            class="bg-plum-12 rounded-xl hover:bg-plum-11 font-pixelify transition-colors ease-out duration-200 color-pureWhite font-bold py-3 px-6 transition-colors"
+            class="bg-plum-12 rounded-xl hover:bg-plum-11 font-pixelify focus-visible:outline-none focus-visible:ring focus-visible:ring-pureWhite transition-colors ease-out duration-200 color-pureWhite font-bold py-3 px-6 transition-colors"
           >
             Start Game
           </button>
@@ -203,9 +203,13 @@ const startGame = async () => {
       player.onCollide('enemy', (e: any) => {
         if (!e) return
         const dx = e.pos.x - player.pos.x
-        if (dx > 0) blockRight = true
-        else blockLeft = true
-        player.vel.x = 0
+        const dy = Math.abs(e.pos.y - player.pos.y)
+        const closeHoriz = Math.abs(dx) < 16 && dy < 30
+        if (closeHoriz) {
+          if (dx > 0) blockRight = true
+          else blockLeft = true
+          player.vel.x = 0
+        }
       })
       player.onCollideEnd('enemy', () => {
         blockLeft = false
@@ -306,6 +310,9 @@ const startGame = async () => {
         const randomSound = hitSounds[Math.floor(Math.random() * hitSounds.length)]
         play(randomSound, { volume: 0.3 })
       }
+
+      // Slightly narrower skeleton collider too for parity
+      // (done where we create skeletons below using area({ width: 24, height: 48, offset: { x: 0, y: -22 } }))
 
       // Helper function to set sprite with correct direction
       function setPlayerSprite(spriteName: string, animationName: string, force = false) {
@@ -761,7 +768,8 @@ const startGame = async () => {
             anchor('center'),
             // Match player scale for consistency
             scale(1.5),
-            area({ width: 24, height: 48, offset: { x: 0, y: -22 } }),
+            // Slightly narrower collider to close gap
+            area({ width: 20, height: 48, offset: { x: 0, y: -22 } }),
             body(),
             layer('game'),
             z(5),

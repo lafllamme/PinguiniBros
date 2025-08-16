@@ -42,6 +42,7 @@ import { GameScene } from '@/assets/scenes/GameScene'
 import { Level1 } from '@/assets/levels/level_1'
 import { Level2 } from '@/assets/levels/level_2'
 import { onScoreChanged, initScore } from '@/utils/coinSystem'
+import { initAssetLoader, loadAllAssets } from '../utils/AssetLoader'
 import kaplay from 'kaplay'
 // VueUse
 import {useWindowSize, useElementSize, useDocumentVisibility} from '@vueuse/core'
@@ -122,6 +123,10 @@ const startGame = async () => {
       onKeyRelease
     } = gameInstance
 
+    // Preload all assets once before any scene
+    initAssetLoader(gameInstance)
+    await loadAllAssets()
+
     // Global Phase System - Level-based background selection
     const loadPhaseBackground = (level: number) => {
       // Levels 1-2 use phase1, level 3+ uses phase2
@@ -149,119 +154,6 @@ const startGame = async () => {
 
     // Initialize coin system with current score
     initScore(game.score)
-
-    // Load animated player from assets/sprites/characters/owl/run/6.png (6 frames)
-    const owletUrl = new URL('../assets/sprites/characters/owl/run/6.png', import.meta.url).href
-    loadSprite('player', owletUrl, {
-      sliceX: 6,
-      sliceY: 1,
-      anims: {
-        run: {from: 0, to: 5, speed: 8, loop: true},
-      },
-    })
-
-    // Load idle sprite animation
-    const idleUrl = new URL('../assets/sprites/characters/owl/idle/4.png', import.meta.url).href
-    loadSprite('player_idle', idleUrl, {
-      sliceX: 4,
-      sliceY: 1,
-      anims: {
-        idle: {from: 0, to: 3, speed: 6, loop: true},
-      },
-    })
-
-    // Load jump sprite animation
-    const jumpUrl = new URL('../assets/sprites/characters/owl/jump/8.png', import.meta.url).href
-    loadSprite('player_jump', jumpUrl, {
-      sliceX: 8,
-      sliceY: 1,
-      anims: {
-        jump: {from: 0, to: 7, speed: 12, loop: false},
-      },
-    })
-
-    // Load attack sprite animation (6 frames)
-    const attackUrl = new URL('../assets/sprites/characters/owl/attack/6.png', import.meta.url).href
-    loadSprite('player_attack', attackUrl, {
-      sliceX: 6,
-      sliceY: 1,
-      anims: {
-        attack: { from: 0, to: 5, speed: 12, loop: false },
-      },
-    })
-
-    // Load death sprite animation (8 frames)
-    const deathUrl = new URL('../assets/sprites/characters/owl/death/8.png', import.meta.url).href
-    loadSprite('player_death', deathUrl, {
-      sliceX: 8,
-      sliceY: 1,
-      anims: {
-        death: { from: 0, to: 7, speed: 8, loop: false },
-      },
-    })
-
-    // Load Skeleton enemy sprite-sheet (832x320, 5 rows)
-    // Rows: Attack(13), Death(13), Walk(12), Idle(4), Hit(3)
-    try {
-      const skeletonUrl = new URL('../assets/sprites/characters/skeleton/skeleton_enemy.png', import.meta.url).href
-      loadSprite('skeleton', skeletonUrl, {
-        sliceX: 13,
-        sliceY: 5,
-        anims: {
-          // Row 0: 0..12 (13)
-          attack: { from: 0, to: 12, speed: 12, loop: false },
-          // Row 1: 13..25 (13)
-          dead:   { from: 13, to: 25, speed: 8, loop: false },
-          // Row 2: 26..37 (12 valid frames)
-          walk:   { from: 26, to: 37, speed: 12, loop: true },
-          // Row 3 starts at index 39, 4 frames → 39..42
-          idle:   { from: 39, to: 42, speed: 8, loop: true },
-          // Row 4 starts at index 52, 3 frames → 52..54
-          hit:    { from: 52, to: 54, speed: 12, loop: false },
-        },
-      })
-    } catch {}
-
-    // Load character sound effects
-    const owlHit1Url = new URL('../assets/sounds/character/owl/hits/1.ogg', import.meta.url).href
-    const owlHit2Url = new URL('../assets/sounds/character/owl/hits/2.ogg', import.meta.url).href
-    const owlHit3Url = new URL('../assets/sounds/character/owl/hits/3.ogg', import.meta.url).href
-    const owlHit4Url = new URL('../assets/sounds/character/owl/hits/4.ogg', import.meta.url).href
-    const owlHit5Url = new URL('../assets/sounds/character/owl/hits/5.ogg', import.meta.url).href
-    const owlHit6Url = new URL('../assets/sounds/character/owl/hits/6.ogg', import.meta.url).href
-    const owlHit7Url = new URL('../assets/sounds/character/owl/hits/7.ogg', import.meta.url).href
-    const owlHit8Url = new URL('../assets/sounds/character/owl/hits/8.ogg', import.meta.url).href
-    const owlHit9Url = new URL('../assets/sounds/character/owl/hits/9.ogg', import.meta.url).href
-    const owlHit10Url = new URL('../assets/sounds/character/owl/hits/10.ogg', import.meta.url).href
-    const owlHit11Url = new URL('../assets/sounds/character/owl/hits/11.ogg', import.meta.url).href
-    const owlHit12Url = new URL('../assets/sounds/character/owl/hits/12.ogg', import.meta.url).href
-    const owlHurtUrl = new URL('../assets/sounds/character/owl/hurt.wav', import.meta.url).href
-    const owlJumpUrl = new URL('../assets/sounds/character/owl/jump.wav', import.meta.url).href
-    const owlExplosionUrl = new URL('../assets/sounds/character/owl/explosion.wav', import.meta.url).href
-
-    // Load all character sounds
-    loadSound('owl_hit_1', owlHit1Url)
-    loadSound('owl_hit_2', owlHit2Url)
-    loadSound('owl_hit_3', owlHit3Url)
-    loadSound('owl_hit_4', owlHit4Url)
-    loadSound('owl_hit_5', owlHit5Url)
-    loadSound('owl_hit_6', owlHit6Url)
-    loadSound('owl_hit_7', owlHit7Url)
-    loadSound('owl_hit_8', owlHit8Url)
-    loadSound('owl_hit_9', owlHit9Url)
-    loadSound('owl_hit_10', owlHit10Url)
-    loadSound('owl_hit_11', owlHit11Url)
-    loadSound('owl_hit_12', owlHit12Url)
-    loadSound('owl_hurt', owlHurtUrl)
-    loadSound('owl_jump', owlJumpUrl)
-    loadSound('owl_explosion', owlExplosionUrl)
-
-    // Remove old coin assets; new ones are loaded via coin system
-
-    // Load basic sprites with better colors
-    loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('fish', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
 
     // Configure layers ONCE globally (bg at back, ui on top)
     setLayers(['bg', 'game', 'ui'], 'game')

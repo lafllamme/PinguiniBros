@@ -240,6 +240,8 @@ const startGame = async () => {
       ;(player as any).facingRight = true
       ;(player as any).isAttacking = false
       ;(player as any).canDamage = false
+      ;(player as any)._lastSprite = 'player_idle'
+      ;(player as any)._lastAnim = 'idle'
 
       // -----------------------------
       // Player Health (Level UI)
@@ -374,10 +376,18 @@ const startGame = async () => {
 
       // Helper function to set sprite with correct direction
       function setPlayerSprite(spriteName: string, animationName: string) {
-        if ((player as any).isAttacking) return
+        const p: any = player
+        if (p.isAttacking) return
+        // Avoid resetting the same animation every frame (onKeyDown fires continuously)
+        if (p._lastSprite === spriteName && p._lastAnim === animationName) {
+          player.flipX = !p.facingRight
+          return
+        }
         player.use(sprite(spriteName))
         player.play(animationName)
-        player.flipX = !(player as any).facingRight
+        player.flipX = !p.facingRight
+        p._lastSprite = spriteName
+        p._lastAnim = animationName
       }
 
       // Player movement

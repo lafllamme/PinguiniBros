@@ -741,7 +741,8 @@ const startGame = async () => {
             if (lives <= 0) {
               go('gameOver', { level })
             } else {
-              // restart same level with one fewer life
+              // Reset HP to full and restart same level with one fewer life
+              game.respawnPlayer()
               go('game', { level, lives })
             }
           }, 2000) // Wait 2 seconds for death animation

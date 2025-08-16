@@ -14,6 +14,8 @@ export class GameScene {
 
   public init() {
     setGravity(this.level.gravity)
+    // Ensure full HP on (re)spawn when entering the scene
+    this.game.respawnPlayer()
     initCoinSystem({
       add,
       sprite,

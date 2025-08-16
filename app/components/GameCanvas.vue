@@ -36,6 +36,7 @@
 
 <script setup lang="ts">
 import {ref, onMounted, onUnmounted, computed, shallowRef, watch} from 'vue'
+import { useCookie } from '#app'
 import kaplay from 'kaplay'
 // VueUse
 import {useWindowSize, useElementSize, useDocumentVisibility} from '@vueuse/core'
@@ -117,6 +118,11 @@ const startGame = async () => {
     // Load the provided PNG background from app/assets/sprites/canvas_bg.png
     const bgUrl = new URL('../assets/sprites/canvas_bg.png', import.meta.url).href
     loadSprite('level_bg', bgUrl)
+
+    // Persistent save cookie (score + lives)
+    const saveCookie = useCookie('pb_state', {
+      default: () => ({ score: 0, lives: 3, lastLevel: 1 }),
+    })
 
     // Load animated player from assets/sprites/Owlet_Monster_Run_6.png (6 frames, 32x32)
     const owletUrl = new URL('../assets/sprites/Owlet_Monster_Run_6.png', import.meta.url).href
@@ -492,18 +498,21 @@ const startGame = async () => {
       })
 
       // UI with colors that match the background
-      let score = 0
+      // initialize from cookie
+      if (!saveCookie.value) saveCookie.value = { score: 0, lives, lastLevel: level }
+      let score = typeof saveCookie.value.score === 'number' ? saveCookie.value.score : 0
       const scoreText = add([
-        text('Score: 0'),
+        text(''),
         pos(20, 20),
         color(255, 255, 255),
         layer('ui'),
         fixed(),
         z(100),
       ])
+      scoreText.text = `Score: ${score}`
 
       // Use lives passed from scene params, fall back to 3
-      if (typeof lives !== 'number') lives = 3
+      if (typeof lives !== 'number') lives = typeof saveCookie.value.lives === 'number' ? saveCookie.value.lives : 3
       const livesText = add([
         text(''),
         pos(20, 50),
@@ -514,6 +523,8 @@ const startGame = async () => {
       ])
       // set initial lives display based on param
       livesText.text = `Lives: ${lives}`
+      // keep cookie in sync
+      saveCookie.value = { score, lives, lastLevel: level }
 
       // -----------------------------
       // Pause system
@@ -605,6 +616,7 @@ const startGame = async () => {
         if (player.health <= 0) {
           lives -= 1
           livesText.text = `Lives: ${lives}`
+          saveCookie.value = { score, lives, lastLevel: level }
           if (lives <= 0) {
             go('gameOver', { level })
           } else {
@@ -776,6 +788,8 @@ const startGame = async () => {
 
       // Win condition
       player.onCollide('goal', () => {
+        // Save progress on level finish
+        saveCookie.value = { score, lives, lastLevel: level }
         go('win')
       })
 
@@ -789,12 +803,15 @@ const startGame = async () => {
           spawnCoinsRandom,
           onScoreChanged,
           makeCoin,
-          playLobbyMusic
+          playLobbyMusic,
+          setScore
         } = await import('../utils/coinSystem')
         initCoinSystem(gameInstance)
         await loadCoinAssets()
         // Start lobby music when game scene loads
         lobbyMusic = playLobbyMusic(0.6)
+        // Initialize coin score from cookie so increments continue correctly
+        try { setScore(score) } catch {}
         // Spawn a few coins near start for immediate visibility
         makeCoin({x: 150, y: 500})
         makeCoin({x: 220, y: 500})
@@ -804,6 +821,7 @@ const startGame = async () => {
         onScoreChanged((n: number) => {
           score = n
           scoreText.text = `Score: ${score}`
+          saveCookie.value = { score, lives, lastLevel: level }
         })
       })()
     })
@@ -941,7 +959,10 @@ const startGame = async () => {
       onKeyPress('escape', () => go('menu'))
     })
 
-    // Start at menu
+    // Start at menu; preload last cookie state to set default level/lives
+    if (saveCookie.value?.lastLevel && saveCookie.value?.lives >= 0) {
+      // nothing else here; menu will read cookie when entering game
+    }
     go('menu')
 
   } catch (error) {

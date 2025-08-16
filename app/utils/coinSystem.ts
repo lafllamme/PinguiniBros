@@ -70,6 +70,11 @@ export function getScore(): number {
   return currentScore
 }
 
+export function setScore(value: number) {
+  currentScore = Math.max(0, Math.floor(value || 0))
+  notifyScore()
+}
+
 export function onScoreChanged(listener: (n: number) => void) {
   scoreListeners.push(listener)
 }

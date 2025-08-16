@@ -82,6 +82,7 @@ function notifyScore() {
 export async function loadCoinAssets() {
   const coinUrl = new URL('../assets/sprites/coin.png', import.meta.url).href
   const lobbyUrl = new URL('../assets/sounds/lobby.ogg', import.meta.url).href
+  const coinFlacUrl = new URL('../assets/sounds/coin.flac', import.meta.url).href
 
   // Animated coin: 10 frames @ 12 FPS, loop
   await K.loadSprite('coin', coinUrl, {
@@ -92,13 +93,18 @@ export async function loadCoinAssets() {
     },
   })
 
-  // Sounds
+  // Sounds: prefer external FLAC coin, fallback to tiny generated WAV if not supported
   try {
-    const coinBeepUrl = generateCoinBeepWavUrl()
-    await K.loadSound('coin', coinBeepUrl)
+    await K.loadSound('coin', coinFlacUrl)
     coinSfxReady = true
   } catch {
-    coinSfxReady = false
+    try {
+      const coinBeepUrl = generateCoinBeepWavUrl()
+      await K.loadSound('coin', coinBeepUrl)
+      coinSfxReady = true
+    } catch {
+      coinSfxReady = false
+    }
   }
   K.loadSound('lobby', lobbyUrl)
 }
@@ -141,7 +147,7 @@ export function makeCoin(position: Vec2Like, opts: MakeCoinOpts = {}) {
     currentScore += 1
     notifyScore()
     if (coinSfxReady) {
-      try { K.play('coin', { volume: 0.35 }) } catch {}
+      try { K.play('coin', { volume: 0.18 }) } catch {}
     }
     K.destroy(coin)
   })

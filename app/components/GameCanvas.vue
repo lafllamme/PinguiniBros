@@ -721,8 +721,7 @@ const startGame = async () => {
         player.health = game.player.hp
         
         console.log(`💔 After damage: Local HP: ${player.health}, Game store HP: ${game.player.hp}`)
-        // Notify GameScene HP system for instant update and regen reset
-        try { ;(window as any).__pb_onPlayerDamage?.(dmg) } catch {}
+        // HP system reacts to Pinia store; no window hooks needed
         if (player.health <= 0) {
           console.log(`💀 Player died! Triggering death animation...`)
           // Play explosion sound

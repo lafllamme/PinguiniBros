@@ -8,9 +8,17 @@ export const useGameStore = defineStore('game', () => {
   const lives = ref(3)
   const currentLevel = ref(1)
   const player = reactive<PlayerStats>(clonePlayer())
+  const lastDamageAt = ref(0)
+  const lastHealAt = ref(0)
 
   // derived
   const hpPercent = computed(() => player.hp / player.maxHp)
+  type HpBucket = 'g' | 'y' | 'r'
+  const hpBucket = computed<HpBucket>(() => {
+    const p = hpPercent.value
+    return p > 0.6 ? 'g' : p > 0.3 ? 'y' : 'r'
+  })
+  const isPlayerDead = computed(() => player.hp <= 0)
   const isGameOver = computed(() => lives.value <= 0)
 
   // actions
@@ -37,10 +45,21 @@ export const useGameStore = defineStore('game', () => {
 
   function damagePlayer(n = 1) {
     player.hp = Math.max(0, player.hp - n)
+    lastDamageAt.value = Date.now()
   }
 
   function healPlayer(n = 1) {
     player.hp = Math.min(player.maxHp, player.hp + n)
+    lastHealAt.value = Date.now()
+  }
+
+  // helpers (time-based checks kept here to avoid window hooks elsewhere)
+  function isRegenReady(now: number = Date.now(), delayMs = 5000) {
+    return now - lastDamageAt.value > delayMs && player.hp < player.maxHp
+  }
+
+  function regenCooldownMs(now: number = Date.now(), delayMs = 5000) {
+    return Math.max(0, delayMs - (now - lastDamageAt.value))
   }
 
   function respawnPlayer() {
@@ -53,8 +72,12 @@ export const useGameStore = defineStore('game', () => {
     lives,
     currentLevel,
     player,
+    lastDamageAt,
+    lastHealAt,
     // derived
     hpPercent,
+    hpBucket,
+    isPlayerDead,
     isGameOver,
     // actions
     setLevel,
@@ -65,6 +88,8 @@ export const useGameStore = defineStore('game', () => {
     damagePlayer,
     healPlayer,
     respawnPlayer,
+    isRegenReady,
+    regenCooldownMs,
   }
 })
 

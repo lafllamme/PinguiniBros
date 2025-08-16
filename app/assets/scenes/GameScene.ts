@@ -113,6 +113,10 @@ export class GameScene {
     }
     updateBar()
 
+    // Lightweight update loop: only recalc width when HP or pos changed
+    let lastHp = this.game.player.hp
+    let lastX = 0
+    let lastY = 0
     onUpdate(() => {
       const pl = get('player')[0]
       if (!pl) return
@@ -124,13 +128,20 @@ export class GameScene {
       // Foreground begins at the left edge of the bg
       this.playerHpBar.pos.x = x - this.playerHpW / 2
       this.playerHpBar.pos.y = y
-      // Always update bar each frame to reflect store changes immediately
-      updateBar()
+      if (x !== lastX || y !== lastY) {
+        lastX = x; lastY = y
+        // positions already set above
+      }
+      if (this.game.player.hp !== lastHp) {
+        lastHp = this.game.player.hp
+        updateBar()
+      }
       // Regen after no damage for 5s, then 1 HP every 2s
       const now = Date.now()
       // Do not regen during death animation
       if ((pl as any).isDead) return
-      if (now - this.lastDamageTs > 5000 && this.game.player.hp < this.game.player.maxHp) {
+      const msSinceDamage = now - this.game.lastDamageAt
+      if (msSinceDamage > 5000 && this.game.player.hp < this.game.player.maxHp) {
         this.regenTimer += dt()
         if (this.regenTimer >= 2) {
           this.game.healPlayer(1)
@@ -145,13 +156,7 @@ export class GameScene {
     })
 
     // External damage hook so other modules can mark damage and force an update
-    try {
-      ;(window as any).__pb_onPlayerDamage = (n: number) => {
-        this.lastDamageTs = Date.now()
-        console.log(`[HP] External damage hook -${n}`)
-        updateBar()
-      }
-    } catch {}
+    // Regen timer driven by store timestamps; no window hooks needed
 
     // expose for damage hooks
     ;(this as any).updatePlayerHpBar = updateBar

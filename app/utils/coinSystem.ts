@@ -75,6 +75,11 @@ export function setScore(value: number) {
   notifyScore()
 }
 
+export function initScore(value: number) {
+  currentScore = Math.max(0, Math.floor(value || 0))
+  // Don't notify listeners on init, just set the internal state
+}
+
 export function onScoreChanged(listener: (n: number) => void) {
   scoreListeners.push(listener)
 }
@@ -85,9 +90,9 @@ function notifyScore() {
 
 // Load sprites and sounds used by coins (and lobby music)
 export async function loadCoinAssets() {
-  const coinUrl = new URL('../assets/sprites/coin.png', import.meta.url).href
-  const lobbyUrl = new URL('../assets/sounds/lobby.ogg', import.meta.url).href
-  const coinFlacUrl = new URL('../assets/sounds/coin.flac', import.meta.url).href
+  const coinUrl = new URL('../assets/sprites/items/coin.png', import.meta.url).href
+  const lobbyUrl = new URL('../assets/music/lobby_1.ogg', import.meta.url).href
+  const coinFlacUrl = new URL('../assets/sounds/items/coin.flac', import.meta.url).href
 
   // Animated coin: 10 frames @ 12 FPS, loop
   await K.loadSprite('coin', coinUrl, {
@@ -154,7 +159,11 @@ export function makeCoin(position: Vec2Like, opts: MakeCoinOpts = {}) {
     if (coinSfxReady) {
       try { K.play('coin', { volume: 0.18 }) } catch {}
     }
-    K.destroy(coin)
+    // Kaplay context may not expose destroy on K; prefer entity.destroy()
+    try {
+      if (typeof K.destroy === 'function') K.destroy(coin)
+      else if (typeof (coin as any).destroy === 'function') (coin as any).destroy()
+    } catch {}
   })
 
   return coin

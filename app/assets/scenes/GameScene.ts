@@ -1,52 +1,190 @@
-import { LevelManager } from '../levels/Level1'
-import { Level1 } from '../levels/Level1'
+import { useGameStore } from '@/stores/game'
+import { Level1, type LevelDef } from '@/assets/levels/level_1'
+import { clonePlayer } from '@/assets/characters/Enemy'
+import { initCoinSystem, loadCoinAssets, spawnCoinsRandom, onScoreChanged, playLobbyMusic } from '@/utils/coinSystem'
 
 export class GameScene {
-  private levelManager: LevelManager
-  private gameState: GameState = {
-    score: 0,
-    lives: 3,
-    currentLevel: 'level1',
-    isPaused: false
-  }
+  private level: LevelDef
+  private game = useGameStore()
 
-  constructor() {
-    this.levelManager = new LevelManager(Level1)
+  constructor(level: LevelDef = Level1) {
+    this.level = level
   }
 
   public init() {
-    // Set up game physics
-    setGravity(1600)
-    
-    // Load assets
-    this.loadAssets()
-    
-    // Create UI
-    this.createUI()
-    
-    // Load level
-    this.levelManager.loadLevel()
-    
-    // Set up game events
-    this.setupGameEvents()
+    setGravity(this.level.gravity)
+    initCoinSystem({
+      add,
+      sprite,
+      pos,
+      area,
+      body,
+      z,
+      anchor,
+      destroy,
+      loadSprite,
+      loadSound,
+      play,
+      lifespan,
+      opacity,
+      rand,
+    } as any)
+    this.createBackground()
+    this.createPlayer()
+    this.createPlayerUI()
+    this.createPlatforms()
+    this.createEnemies()
+    this.setupCoinsAndMusic()
   }
 
-  private loadAssets() {
-    // Load sprites
-    loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('ice_ground', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('fish', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('coin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('slime', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('bat', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('goal', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    loadSprite('ice_cave', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
-    
-    // Load sounds
-    loadSound('jump', 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT')
-    loadSound('collect', 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT')
-    loadSound('hit', 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT')
+  private createBackground() {
+    add([sprite('level_bg'), pos(0, 0), anchor('topleft'), layer('bg'), fixed()])
+  }
+
+  private createPlayer() {
+    const p = add([sprite('player_idle'), pos(this.level.playerStart.x, this.level.playerStart.y), anchor('center'), area(), body(), scale(1.5), layer('game'), z(10), 'player'])
+    p.play('idle')
+  }
+
+  // --- Player HP UI ---
+  private playerHpBar: any
+  private playerHpBg: any
+  private playerHpW = 24
+  private playerHpH = 3
+  private lastDamageTs = 0
+  private regenTimer = 0
+
+  private createPlayerUI() {
+    const player = get('player')[0]
+    if (!player) return
+    this.playerHpBg = add([rect(this.playerHpW + 4, this.playerHpH + 2), pos(player.pos.x, player.pos.y - 50), anchor('center'), color(0, 0, 0), layer('ui'), z(200)])
+    this.playerHpBar = add([rect(this.playerHpW, this.playerHpH), pos(player.pos.x, player.pos.y - 50), anchor('center'), color(0, 255, 0), layer('ui'), z(201)])
+
+    const updateBar = () => {
+      const pct = Math.max(0, Math.min(1, this.game.player.hp / this.game.player.maxHp))
+      const w = Math.round(this.playerHpW * pct)
+      this.playerHpBar.width = w
+      this.playerHpBar.color = pct > 0.6 ? color(0, 255, 0) : pct > 0.3 ? color(255, 255, 0) : color(255, 0, 0)
+    }
+    updateBar()
+
+    onUpdate(() => {
+      const pl = get('player')[0]
+      if (!pl) return
+      const x = Math.round(pl.pos.x)
+      const y = Math.round(pl.pos.y - 50)
+      this.playerHpBg.pos.x = x
+      this.playerHpBg.pos.y = y
+      this.playerHpBar.pos.x = x
+      this.playerHpBar.pos.y = y
+      // simple regen after 3s
+      const now = Date.now()
+      if (now - this.lastDamageTs > 3000 && this.game.player.hp < this.game.player.maxHp) {
+        this.regenTimer += dt()
+        if (this.regenTimer >= 1) {
+          this.game.healPlayer(1)
+          updateBar()
+          this.regenTimer = 0
+        }
+      }
+    })
+
+    // expose for damage hooks
+    ;(this as any).updatePlayerHpBar = updateBar
+  }
+
+  private createPlatforms() {
+    for (const plt of this.level.platforms) {
+      add([rect(plt.w, plt.h), pos(plt.x, plt.y), area(), body({ isStatic: true }), color(34, 139, 34), layer('game'), z(1)])
+    }
+  }
+
+  private createEnemies() {
+    for (const e of this.level.enemies) {
+      this.createSkeleton(e.x, e.y)
+    }
+  }
+
+  private createSkeleton(x: number, y: number) {
+    const sk = add([
+      sprite('skeleton'),
+      pos(x, y),
+      anchor('center'),
+      area(),
+      body(),
+      layer('game'),
+      z(5),
+      'enemy',
+      'skeleton',
+      { direction: 1, isAttacking: false, isDead: false, speed: 80, patrolStart: x - 100, patrolEnd: x + 100, health: 3, maxHealth: 3 },
+    ])
+    sk.play('idle')
+
+    const hpBg = add([rect(42, 8), pos(x, y - 60), anchor('center'), color(0, 0, 0), layer('ui'), z(19)])
+    const hpBar = add([rect(40, 6), pos(x, y - 60), anchor('center'), color(0, 255, 0), layer('ui'), z(20)])
+    const updateHp = () => {
+      const p = sk.health / sk.maxHealth
+      hpBar.width = Math.round(40 * p)
+      hpBar.color = p > 0.5 ? color(0, 255, 0) : p > 0.25 ? color(255, 255, 0) : color(255, 0, 0)
+    }
+    updateHp()
+
+    onUpdate(() => {
+      if (sk.isDead) return
+      // Follow hp bar
+      const uiX = Math.round(sk.pos.x)
+      const uiY = Math.round(sk.pos.y - 60)
+      hpBg.pos.x = uiX
+      hpBg.pos.y = uiY
+      hpBar.pos.x = uiX
+      hpBar.pos.y = uiY
+
+      // chase / patrol
+      const player = get('player')[0]
+      if (!player) return
+      const dx = player.pos.x - sk.pos.x
+      const dist = Math.abs(dx)
+      if (dist < 160 && !sk.isAttacking) {
+        sk.direction = dx > 0 ? 1 : -1
+        sk.flipX = sk.direction < 0
+        sk.vel.x = sk.speed * sk.direction
+        sk.play('walk')
+      } else if (!sk.isAttacking) {
+        sk.play('walk')
+        sk.vel.x = sk.speed * sk.direction
+        if (sk.pos.x <= sk.patrolStart) { sk.direction = 1; sk.flipX = false }
+        if (sk.pos.x >= sk.patrolEnd) { sk.direction = -1; sk.flipX = true }
+      }
+
+      // attack if close
+      if (dist < 70 && !sk.isAttacking) {
+        sk.isAttacking = true
+        sk.vel.x = 0
+        sk.play('attack')
+        const hit = add([rect(70, 50), pos(sk.pos.x + sk.direction * 35, sk.pos.y), anchor('center'), area(), layer('game'), z(10), opacity(0), 'skeletonAttack', lifespan(0.35, { fade: 0 })])
+        hit.onCollide('player', () => this.damagePlayer(1))
+        setTimeout(() => {
+          sk.isAttacking = false
+          if (!sk.isDead) sk.play('walk')
+        }, 700)
+      }
+    })
+
+    sk.onCollide('playerAttack', () => {
+      if (sk.isDead) return
+      sk.health -= 1
+      updateHp()
+      sk.play('hit')
+      if (sk.health <= 0) {
+        sk.isDead = true
+        sk.play('dead')
+        destroy(hpBg)
+        destroy(hpBar)
+        setTimeout(() => destroy(sk), 1600)
+      }
+    })
+
+    return sk
   }
 
   private createUI() {
@@ -88,24 +226,54 @@ export class GameScene {
     ])
 
     // Pause overlay
-    add([
+    const pauseOverlayObj = add([
       rect(800, 600),
       pos(0, 0),
       color(0, 0, 0, 0.5),
       {
-        id: 'pauseOverlay',
-        hidden: true
+        id: 'pauseOverlay'
       }
     ])
+    pauseOverlayObj.hidden = true
 
-    add([
+    const pauseTextObj = add([
       text('PAUSED'),
       pos(350, 250),
       {
-        id: 'pauseText',
-        hidden: true
+        id: 'pauseText'
       }
     ])
+    pauseTextObj.hidden = true
+  }
+
+  private async setupCoinsAndMusic() {
+    await loadCoinAssets()
+    playLobbyMusic(0.6)
+    spawnCoinsRandom(this.level.coins.length || 15, { x: 0, y: 0, w: this.level.width, h: 600 }, { falling: false })
+    onScoreChanged((n: number) => {
+      this.game.addScore(n - this.game.score)
+      const scoreText = get('scoreText')[0]
+      if (scoreText) scoreText.text = `Score: ${this.game.score}`
+    })
+  }
+
+  // player damage + lives handling
+  private damagePlayer(n: number) {
+    this.game.damagePlayer(n)
+    this.lastDamageTs = Date.now()
+    const update = (this as any).updatePlayerHpBar
+    if (typeof update === 'function') update()
+    const livesText = get('livesText')[0]
+    if (this.game.player.hp <= 0) {
+      this.game.loseLife()
+      if (livesText) livesText.text = `Lives: ${this.game.lives}`
+      if (this.game.lives <= 0) {
+        go('gameOver', { level: this.game.currentLevel })
+      } else {
+        this.game.respawnPlayer()
+        if (typeof update === 'function') update()
+      }
+    }
   }
 
   private setupGameEvents() {
@@ -208,9 +376,4 @@ export class GameScene {
   }
 }
 
-interface GameState {
-  score: number
-  lives: number
-  currentLevel: string
-  isPaused: boolean
-}
+interface GameState {}

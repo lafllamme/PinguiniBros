@@ -140,29 +140,18 @@ export class AssetLoader {
 // Default asset configuration for Pinguini Bros
 export const defaultAssets: AssetConfig = {
   sprites: [
-    { name: 'penguin', path: '/assets/sprites/penguin.png' },
-    { name: 'ice_ground', path: '/assets/sprites/ice_ground.png' },
-    { name: 'ice_platform', path: '/assets/sprites/ice_platform.png' },
-    { name: 'fish', path: '/assets/sprites/fish.png' },
-    { name: 'coin', path: '/assets/sprites/coin.png' },
-    { name: 'gem', path: '/assets/sprites/gem.png' },
-    { name: 'slime', path: '/assets/sprites/slime.png' },
-    { name: 'bat', path: '/assets/sprites/bat.png' },
-    { name: 'spike', path: '/assets/sprites/spike.png' },
-    { name: 'goal', path: '/assets/sprites/goal.png' },
-    { name: 'ice_cave', path: '/assets/sprites/ice_cave.png' },
-    { name: 'snow_bg', path: '/assets/sprites/snow_bg.png' }
+    { name: 'coin', path: '/assets/sprites/items/coin.png' },
+    { name: 'canvas_bg', path: '/assets/sprites/general/canvas_bg.png' },
+    { name: 'owl_idle', path: '/assets/sprites/characters/owl/idle/4.png' },
+    { name: 'owl_run', path: '/assets/sprites/characters/owl/run/6.png' },
+    { name: 'owl_jump', path: '/assets/sprites/characters/owl/jump/8.png' },
+    { name: 'owl_attack', path: '/assets/sprites/characters/owl/attack/6.png' },
+    { name: 'skeleton_atlas', path: '/assets/sprites/characters/skeleton/skeleton_enemy.png' }
   ],
   sounds: [
-    { name: 'jump', path: '/assets/sounds/jump.wav', volume: 0.7 },
-    { name: 'collect', path: '/assets/sounds/collect.wav', volume: 0.8 },
-    { name: 'hit', path: '/assets/sounds/hit.wav', volume: 0.6 },
-    { name: 'death', path: '/assets/sounds/death.wav', volume: 0.5 },
-    { name: 'level_complete', path: '/assets/sounds/level_complete.wav', volume: 0.8 }
+    { name: 'coin', path: '/assets/sounds/items/coin.flac', volume: 0.2 }
   ],
   music: [
-    { name: 'menu_music', path: '/assets/music/menu.mp3', volume: 0.4, loop: true },
-    { name: 'game_music', path: '/assets/music/game.mp3', volume: 0.3, loop: true },
-    { name: 'victory_music', path: '/assets/music/victory.mp3', volume: 0.5, loop: false }
+    { name: 'lobby_1', path: '/assets/music/lobby_1.ogg', volume: 0.6, loop: true }
   ]
 }

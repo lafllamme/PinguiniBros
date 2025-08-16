@@ -11,7 +11,8 @@ export default defineNuxtConfig({
     '@nuxt/test-utils',
     '@unocss/nuxt',
     '@nuxtjs/i18n',
-    '@vueuse/nuxt'
+    '@vueuse/nuxt',
+    '@pinia/nuxt'
   ],
 
   app: {

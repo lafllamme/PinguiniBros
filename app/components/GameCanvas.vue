@@ -38,6 +38,10 @@
 <script setup lang="ts">
 import {ref, onMounted, onUnmounted, computed, shallowRef, watch} from 'vue'
 import { useCookie } from '#app'
+import { GameScene } from '@/assets/scenes/GameScene'
+import { Level1 } from '@/assets/levels/level_1'
+import { Level2 } from '@/assets/levels/level_2'
+import { onScoreChanged, initScore } from '@/utils/coinSystem'
 import kaplay from 'kaplay'
 // VueUse
 import {useWindowSize, useElementSize, useDocumentVisibility} from '@vueuse/core'
@@ -47,6 +51,7 @@ const containerEl = ref<HTMLElement>()
 const gameStarted = ref(false)
 let gameInstance: any = null
 let lobbyMusic: any = null
+const game = useGameStore()
 
 // Responsive sizing using VueUse
 const {width: winW, height: winH} = useWindowSize()
@@ -92,6 +97,7 @@ const startGame = async () => {
       area,
       body,
       scale,
+      get,
       onKeyDown,
       onKeyPress,
       onClick,
@@ -116,8 +122,8 @@ const startGame = async () => {
       onKeyRelease
     } = gameInstance
 
-    // Load the provided PNG background from app/assets/sprites/canvas_bg.png
-    const bgUrl = new URL('../assets/sprites/canvas_bg.png', import.meta.url).href
+    // Load the provided PNG background from app/assets/sprites/general/canvas_bg.png
+    const bgUrl = new URL('../assets/sprites/general/canvas_bg.png', import.meta.url).href
     loadSprite('level_bg', bgUrl)
 
     // Persistent save cookie (score + lives)
@@ -125,8 +131,18 @@ const startGame = async () => {
       default: () => ({ score: 0, lives: 3, lastLevel: 1 }),
     })
 
-    // Load animated player from assets/sprites/Owlet_Monster_Run_6.png (6 frames, 32x32)
-    const owletUrl = new URL('../assets/sprites/Owlet_Monster_Run_6.png', import.meta.url).href
+    // Load saved state into Pinia store
+    if (saveCookie.value) {
+      game.score = saveCookie.value.score || 0
+      game.lives = saveCookie.value.lives || 3
+      game.currentLevel = saveCookie.value.lastLevel || 1
+    }
+
+    // Initialize coin system with current score
+    initScore(game.score)
+
+    // Load animated player from assets/sprites/characters/owl/run/6.png (6 frames)
+    const owletUrl = new URL('../assets/sprites/characters/owl/run/6.png', import.meta.url).href
     loadSprite('player', owletUrl, {
       sliceX: 6,
       sliceY: 1,
@@ -136,7 +152,7 @@ const startGame = async () => {
     })
 
     // Load idle sprite animation
-    const idleUrl = new URL('../assets/sprites/Owlet_Monster_Idle_4.png', import.meta.url).href
+    const idleUrl = new URL('../assets/sprites/characters/owl/idle/4.png', import.meta.url).href
     loadSprite('player_idle', idleUrl, {
       sliceX: 4,
       sliceY: 1,
@@ -146,7 +162,7 @@ const startGame = async () => {
     })
 
     // Load jump sprite animation
-    const jumpUrl = new URL('../assets/sprites/Owlet_Monster_Jump_8.png', import.meta.url).href
+    const jumpUrl = new URL('../assets/sprites/characters/owl/jump/8.png', import.meta.url).href
     loadSprite('player_jump', jumpUrl, {
       sliceX: 8,
       sliceY: 1,
@@ -156,7 +172,7 @@ const startGame = async () => {
     })
 
     // Load attack sprite animation (6 frames)
-    const attackUrl = new URL('../assets/sprites/Owlet_Monster_Attack2_6.png', import.meta.url).href
+    const attackUrl = new URL('../assets/sprites/characters/owl/attack/6.png', import.meta.url).href
     loadSprite('player_attack', attackUrl, {
       sliceX: 6,
       sliceY: 1,
@@ -168,7 +184,7 @@ const startGame = async () => {
     // Load Skeleton enemy sprite-sheet (832x320, 5 rows)
     // Rows: Attack(13), Death(13), Walk(12), Idle(4), Hit(3)
     try {
-      const skeletonUrl = new URL('../assets/sprites/Skeleton_Enemy.png', import.meta.url).href
+      const skeletonUrl = new URL('../assets/sprites/characters/skeleton/skeleton_enemy.png', import.meta.url).href
       loadSprite('skeleton', skeletonUrl, {
         sliceX: 13,
         sliceY: 5,
@@ -197,35 +213,15 @@ const startGame = async () => {
     // Configure layers ONCE globally (bg at back, ui on top)
     setLayers(['bg', 'game', 'ui'], 'game')
 
-    // Create main game scene
+    // Create main game scene using extracted GameScene
     scene('game', ({level = 1, lives = 3} = {}) => {
-      const LEVEL_WIDTH = 2400
-      // Set gravity
-      setGravity(1600)
-
-      add([
-        sprite('level_bg'),
-        pos(0, 0),
-        anchor('topleft'),
-        layer('bg'),
-        fixed(),
-      ])
-
-      // Create player using your player.png sprite
-      const player = add([
-        sprite('player_idle'),
-        pos(50, 450),
-        anchor('center'),
-        area(),
-        body(),
-        // make player globally larger
-        scale(1.5),
-        layer('game'),
-        z(10),
-        'player'
-      ])
+      const chosen = level >= 2 ? Level2 : Level1
+      const gs = new GameScene(chosen)
+      gs.init()
 
       // Add custom properties to player
+      const player = get('player')[0]
+      if (!player) return
       player.speed = 320
       player.isOnGround = false
       player.canDoubleJump = true
@@ -247,10 +243,9 @@ const startGame = async () => {
       // -----------------------------
       // Player Health (Level UI)
       // -----------------------------
-      const PLAYER_MAX_HP = 10
       const PLAYER_HP_BAR_WIDTH = 24
       const PLAYER_HP_BAR_HEIGHT = 3
-      player.health = PLAYER_MAX_HP
+      player.health = game.player.maxHp
 
       const hpBg = add([
         rect(PLAYER_HP_BAR_WIDTH + 4, PLAYER_HP_BAR_HEIGHT + 2),
@@ -273,7 +268,7 @@ const startGame = async () => {
       ])
 
       function updatePlayerHpBar() {
-        const pct = Math.max(0, player.health) / PLAYER_MAX_HP
+        const pct = Math.max(0, player.health) / game.player.maxHp
         const w = Math.round(PLAYER_HP_BAR_WIDTH * pct)
         hpBar.width = w
         if (pct > 0.6) hpBar.color = color(0, 255, 0)
@@ -284,8 +279,10 @@ const startGame = async () => {
 
       // Follow player (snap to integer pixels)
       onUpdate(() => {
-        const uiX = Math.round(player.pos.x)
-        const uiY = Math.round(player.pos.y - 50)
+        const pl = get('player')[0]
+        if (!pl) return
+        const uiX = Math.round(pl.pos.x)
+        const uiY = Math.round(pl.pos.y - 50)
         hpBg.pos.x = uiX
         hpBg.pos.y = uiY
         hpBar.pos.x = uiX
@@ -293,7 +290,7 @@ const startGame = async () => {
       })
 
       // Create ground across the entire level width
-      for (let x = 0; x < LEVEL_WIDTH; x += 200) {
+      for (let x = 0; x < chosen.width; x += 200) {
         add([
           rect(200, 50),
           pos(x, 550),
@@ -365,7 +362,7 @@ const startGame = async () => {
       // Goal at the end of the level
       add([
         rect(20, 120),
-        pos(LEVEL_WIDTH - 80, 430),
+        pos(chosen.width - 80, 430),
         area(),
         color(255, 215, 0),
         layer('game'),
@@ -393,60 +390,72 @@ const startGame = async () => {
 
       // Player movement
       onKeyDown('left', () => {
-        player.move(-player.speed, 0)
-        player.facingRight = false
-        player.isMoving = true
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.move(-pl.speed, 0)
+        pl.facingRight = false
+        pl.isMoving = true
         // Switch to run animation when moving
-        if (player.isOnGround && !player.jumpState) {
+        if (pl.isOnGround && !pl.jumpState) {
           setPlayerSprite('player', 'run')
         }
       })
 
       onKeyDown('right', () => {
-        player.move(player.speed, 0)
-        player.facingRight = true
-        player.isMoving = true
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.move(pl.speed, 0)
+        pl.facingRight = true
+        pl.isMoving = true
         // Switch to run animation when moving
-        if (player.isOnGround && !player.jumpState) {
+        if (pl.isOnGround && !pl.jumpState) {
           setPlayerSprite('player', 'run')
         }
       })
 
       onKeyRelease('left', () => {
-        player.isMoving = false
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.isMoving = false
         // Switch back to idle when not moving
-        if (player.isOnGround && !player.jumpState) {
+        if (pl.isOnGround && !pl.jumpState) {
           setPlayerSprite('player_idle', 'idle')
         }
       })
 
       onKeyRelease('right', () => {
-        player.isMoving = false
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.isMoving = false
         // Switch back to idle when not moving
-        if (player.isOnGround && !player.jumpState) {
+        if (pl.isOnGround && !pl.jumpState) {
           setPlayerSprite('player_idle', 'idle')
         }
       })
 
       // Enhanced jump function
       function performJump() {
-        if (player.jumpCount < player.maxJumps) {
-          player.jumpCount++
-          player.jumpState = true
-          player.isOnGround = false
+        const pl = get('player')[0]
+        if (!pl) return
+        if (pl.jumpCount < pl.maxJumps) {
+          pl.jumpCount++
+          pl.jumpState = true
+          pl.isOnGround = false
           
           // Switch to jump sprite and play animation
           setPlayerSprite('player_jump', 'jump')
           
           // Apply jump force
-          player.jump(player.jumpForce)
+          pl.jump(pl.jumpForce)
           
           // Reset to appropriate sprite after jump animation completes
           setTimeout(() => {
-            if (player.isOnGround) {
-              player.jumpState = false
+            const p2 = get('player')[0]
+            if (!p2) return
+            if (p2.isOnGround) {
+              p2.jumpState = false
               // Switch back to idle or run based on movement state
-              if (player.isMoving) {
+              if (p2.isMoving) {
                 setPlayerSprite('player', 'run')
               } else {
                 setPlayerSprite('player_idle', 'idle')
@@ -458,18 +467,19 @@ const startGame = async () => {
 
       // Player attack with X (scale 1.5 and transient hitbox)
       function performAttack() {
-        const p: any = player
+        const p: any = get('player')[0]
+        if (!p) return
         if (p.isAttacking) return
         p.isAttacking = true
         // set attack sprite, preserve facing
-        player.use(sprite('player_attack'))
-        player.play('attack')
-        player.flipX = !p.facingRight
+        p.use(sprite('player_attack'))
+        p.play('attack')
+        p.flipX = !p.facingRight
         // hitbox
         const dir = p.facingRight ? 1 : -1
         const hb = add([
           rect(36, 24),
-          pos(player.pos.x + dir * 28, player.pos.y - 4),
+          pos(p.pos.x + dir * 28, p.pos.y - 4),
           anchor('center'),
           area(),
           layer('game'),
@@ -486,8 +496,8 @@ const startGame = async () => {
         setTimeout(() => {
           p.isAttacking = false
           // return to proper animation immediately, even if keys are still held
-          if (player.isOnGround) {
-            if (player.isMoving) setPlayerSprite('player', 'run', true)
+          if (p.isOnGround) {
+            if (p.isMoving) setPlayerSprite('player', 'run', true)
             else setPlayerSprite('player_idle', 'idle', true)
           } else {
             setPlayerSprite('player_jump', 'jump', true)
@@ -495,51 +505,55 @@ const startGame = async () => {
         }, 520)
       }
 
-      onKeyPress('space', () => {
-        performJump()
-      })
+      onKeyPress('space', () => { performJump() })
       onKeyPress('x', () => {
         performAttack()
       })
 
       // Arrow Up jump as well
-      onKeyPress('up', () => {
-        performJump()
-      })
+      onKeyPress('up', () => { performJump() })
 
       // Alternative controls
       onKeyDown('a', () => {
-        player.move(-player.speed, 0)
-        player.facingRight = false
-        player.isMoving = true
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.move(-pl.speed, 0)
+        pl.facingRight = false
+        pl.isMoving = true
         // Switch to run animation when moving
-        if (player.isOnGround && !player.jumpState) {
+        if (pl.isOnGround && !pl.jumpState) {
           setPlayerSprite('player', 'run')
         }
       })
 
       onKeyDown('d', () => {
-        player.move(player.speed, 0)
-        player.facingRight = true
-        player.isMoving = true
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.move(pl.speed, 0)
+        pl.facingRight = true
+        pl.isMoving = true
         // Switch to run animation when moving
-        if (player.isOnGround && !player.jumpState) {
+        if (pl.isOnGround && !pl.jumpState) {
           setPlayerSprite('player', 'run')
         }
       })
 
       onKeyRelease('a', () => {
-        player.isMoving = false
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.isMoving = false
         // Switch back to idle when not moving
-        if (player.isOnGround && !player.jumpState) {
+        if (pl.isOnGround && !pl.jumpState) {
           setPlayerSprite('player_idle', 'idle')
         }
       })
 
       onKeyRelease('d', () => {
-        player.isMoving = false
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.isMoving = false
         // Switch back to idle when not moving
-        if (player.isOnGround && !player.jumpState) {
+        if (pl.isOnGround && !pl.jumpState) {
           setPlayerSprite('player_idle', 'idle')
         }
       })
@@ -549,16 +563,19 @@ const startGame = async () => {
       })
 
       // Collision detection
-      player.onCollide('ground', () => {
-        player.isOnGround = true
-        player.jumpCount = 0
-        player.canDoubleJump = true
+      const pl0 = get('player')[0]
+      pl0?.onCollide('ground', () => {
+        const pl = get('player')[0]
+        if (!pl) return
+        pl.isOnGround = true
+        pl.jumpCount = 0
+        pl.canDoubleJump = true
         
         // Switch back to appropriate sprite when landing
-        if (player.jumpState) {
-          player.jumpState = false
+        if (pl.jumpState) {
+          pl.jumpState = false
           // Switch back to idle or run based on movement state
-          if (player.isMoving) {
+          if (pl.isMoving) {
             setPlayerSprite('player', 'run')
           } else {
             setPlayerSprite('player_idle', 'idle')
@@ -567,14 +584,11 @@ const startGame = async () => {
       })
 
       // Coin collection handled inside coinSystem.makeCoin, but keep a guard for any stray coins
-      player.onCollide('coin', (c: any) => {
+      pl0?.onCollide('coin', (c: any) => {
         // No-op, coinSystem already destroys & updates score
       })
 
-      // UI with colors that match the background
-      // initialize from cookie
-      if (!saveCookie.value) saveCookie.value = { score: 0, lives, lastLevel: level }
-      let score = typeof saveCookie.value.score === 'number' ? saveCookie.value.score : 0
+      // UI with colors that match the background (use Pinia store)
       const scoreText = add([
         text(''),
         pos(20, 20),
@@ -583,10 +597,10 @@ const startGame = async () => {
         fixed(),
         z(100),
       ])
-      scoreText.text = `Score: ${score}`
+      scoreText.text = `Score: ${game.score}`
 
-      // Use lives passed from scene params, fall back to 3
-      if (typeof lives !== 'number') lives = typeof saveCookie.value.lives === 'number' ? saveCookie.value.lives : 3
+      // Use lives from store
+      lives = game.lives
       const livesText = add([
         text(''),
         pos(20, 50),
@@ -597,8 +611,13 @@ const startGame = async () => {
       ])
       // set initial lives display based on param
       livesText.text = `Lives: ${lives}`
-      // keep cookie in sync
-      saveCookie.value = { score, lives, lastLevel: level }
+      // keep cookie in sync + update score on coin changes
+      saveCookie.value = { score: game.score, lives: game.lives, lastLevel: level }
+      onScoreChanged((n: number) => {
+        game.addScore(n - game.score)
+        scoreText.text = `Score: ${game.score}`
+        saveCookie.value = { score: game.score, lives: game.lives, lastLevel: level }
+      })
 
       // -----------------------------
       // Pause system
@@ -688,9 +707,10 @@ const startGame = async () => {
         player.health = Math.max(0, player.health - dmg)
         updatePlayerHpBar()
         if (player.health <= 0) {
-          lives -= 1
+          game.loseLife()
+          lives = game.lives
           livesText.text = `Lives: ${lives}`
-          saveCookie.value = { score, lives, lastLevel: level }
+          saveCookie.value = { score: game.score, lives: game.lives, lastLevel: level }
           if (lives <= 0) {
             go('gameOver', { level })
           } else {
@@ -893,51 +913,23 @@ const startGame = async () => {
 
       // Camera follow (x only), keep background fixed
       onUpdate(() => {
-        let targetX = player.pos.x
+        const pl = get('player')[0]
+        if (!pl) return
+        let targetX = pl.pos.x
         const half = width() / 2
         if (targetX < half) targetX = half
-        if (targetX > LEVEL_WIDTH - half) targetX = LEVEL_WIDTH - half
+        if (targetX > chosen.width - half) targetX = chosen.width - half
         setCamPos(targetX, height() / 2)
       })
 
       // Win condition
-      player.onCollide('goal', () => {
+      pl0?.onCollide('goal', () => {
         // Save progress on level finish
-        saveCookie.value = { score, lives, lastLevel: level }
+        saveCookie.value = { score: game.score, lives, lastLevel: level }
         go('win')
       })
 
-      // ------------------------------------
-      // Coin system: load assets and spawn
-      // ------------------------------------
-      ;(async () => {
-        const {
-          initCoinSystem,
-          loadCoinAssets,
-          spawnCoinsRandom,
-          onScoreChanged,
-          makeCoin,
-          playLobbyMusic,
-          setScore
-        } = await import('../utils/coinSystem')
-        initCoinSystem(gameInstance)
-        await loadCoinAssets()
-        // Start lobby music when game scene loads
-        lobbyMusic = playLobbyMusic(0.6)
-        // Initialize coin score from cookie so increments continue correctly
-        try { setScore(score) } catch {}
-        // Spawn a few coins near start for immediate visibility
-        makeCoin({x: 150, y: 500})
-        makeCoin({x: 220, y: 500})
-        makeCoin({x: 290, y: 500})
-        // And random coins across the level
-        spawnCoinsRandom(15, {x: 0, y: 0, w: LEVEL_WIDTH, h: 600}, {falling: false})
-        onScoreChanged((n: number) => {
-          score = n
-          scoreText.text = `Score: ${score}`
-          saveCookie.value = { score, lives, lastLevel: level }
-        })
-      })()
+      // Coin/music handled by GameScene now
     })
 
     // Simple win scene

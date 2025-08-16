@@ -1,128 +1,63 @@
-import type { GameObj, Vec2 } from 'kaplay'
+// Centralized character definitions for the game
+// Keep this file framework-agnostic so it can be reused in scenes or stores
 
-export interface EnemyConfig {
+export interface BaseStats {
+  maxHp: number
+  hp: number
+  lives: number
   speed: number
-  health: number
+}
+
+export interface AttackStats {
   damage: number
-  patrolDistance: number
-  sprite: string
+  range: number
+  cooldownMs: number
 }
 
-export enum EnemyType {
-  SLIME = 'slime',
-  BAT = 'bat',
-  SPIKE = 'spike'
+export interface PlayerStats extends BaseStats {
+  jumpForce: number
+  maxJumps: number
+  attack: AttackStats
 }
 
-export class Enemy {
-  private gameObj: GameObj
-  private config: EnemyConfig
-  private startPos: Vec2
-  private patrolDirection: number = 1
-  private isDead: boolean = false
-
-  constructor(gameObj: GameObj, config: EnemyConfig) {
-    this.gameObj = gameObj
-    this.config = config
-    this.startPos = gameObj.pos.clone()
-    this.setupEnemy()
-  }
-
-  private setupEnemy() {
-    // Set up enemy behavior
-    this.gameObj.onCollide('player', () => {
-      this.onPlayerCollision()
-    })
-
-    // Set up patrol movement
-    this.setupPatrol()
-  }
-
-  private setupPatrol() {
-    // Simple patrol behavior
-    this.gameObj.onUpdate(() => {
-      if (this.isDead) return
-
-      const currentX = this.gameObj.pos.x
-      const startX = this.startPos.x
-
-      // Change direction when reaching patrol limits
-      if (currentX <= startX - this.config.patrolDistance || 
-          currentX >= startX + this.config.patrolDistance) {
-        this.patrolDirection *= -1
-        this.gameObj.flipX = this.patrolDirection < 0
-      }
-
-      // Move enemy
-      this.gameObj.move(this.config.speed * this.patrolDirection, 0)
-    })
-  }
-
-  private onPlayerCollision() {
-    // Handle collision with player
-    // This will be implemented in the game scene
-  }
-
-  public takeDamage(damage: number) {
-    this.config.health -= damage
-    if (this.config.health <= 0) {
-      this.die()
-    }
-  }
-
-  private die() {
-    this.isDead = true
-    // Add death animation or effects here
-    destroy(this.gameObj)
-  }
-
-  public getPosition(): Vec2 {
-    return this.gameObj.pos
-  }
-
-  public isAlive(): boolean {
-    return !this.isDead
-  }
-
-  public getDamage(): number {
-    return this.config.damage
-  }
+export interface EnemyStats extends BaseStats {
+  patrolRange: number
+  attack: AttackStats
 }
 
-// Factory function to create different enemy types
-export function createEnemy(type: EnemyType, pos: Vec2): EnemyConfig {
-  switch (type) {
-    case EnemyType.SLIME:
-      return {
-        speed: 50,
-        health: 2,
-        damage: 1,
-        patrolDistance: 100,
-        sprite: 'slime'
-      }
-    case EnemyType.BAT:
-      return {
-        speed: 80,
-        health: 1,
-        damage: 1,
-        patrolDistance: 150,
-        sprite: 'bat'
-      }
-    case EnemyType.SPIKE:
-      return {
-        speed: 0,
-        health: 999, // Immortal
-        damage: 2,
-        patrolDistance: 0,
-        sprite: 'spike'
-      }
-    default:
-      return {
-        speed: 50,
-        health: 1,
-        damage: 1,
-        patrolDistance: 100,
-        sprite: 'enemy'
-      }
-  }
+export const defaultPlayer: PlayerStats = {
+  maxHp: 10,
+  hp: 10,
+  lives: 3,
+  speed: 320,
+  jumpForce: 640,
+  maxJumps: 2,
+  attack: {
+    damage: 1,
+    range: 32,
+    cooldownMs: 520,
+  },
+}
+
+export const skeletonEnemy: EnemyStats = {
+  maxHp: 3,
+  hp: 3,
+  lives: 1,
+  speed: 80,
+  patrolRange: 100,
+  attack: {
+    damage: 1,
+    range: 40,
+    cooldownMs: 700,
+  },
+}
+
+export type CharacterKind = 'player' | 'skeleton'
+
+export function clonePlayer(overrides: Partial<PlayerStats> = {}): PlayerStats {
+  return { ...defaultPlayer, ...overrides, attack: { ...defaultPlayer.attack, ...overrides.attack } }
+}
+
+export function cloneSkeleton(overrides: Partial<EnemyStats> = {}): EnemyStats {
+  return { ...skeletonEnemy, ...overrides, attack: { ...skeletonEnemy.attack, ...overrides.attack } }
 }

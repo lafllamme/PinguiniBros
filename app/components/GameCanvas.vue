@@ -181,6 +181,16 @@ const startGame = async () => {
       },
     })
 
+    // Load death sprite animation (8 frames)
+    const deathUrl = new URL('../assets/sprites/characters/owl/death/8.png', import.meta.url).href
+    loadSprite('player_death', deathUrl, {
+      sliceX: 8,
+      sliceY: 1,
+      anims: {
+        death: { from: 0, to: 7, speed: 8, loop: false },
+      },
+    })
+
     // Load Skeleton enemy sprite-sheet (832x320, 5 rows)
     // Rows: Attack(13), Death(13), Walk(12), Idle(4), Hit(3)
     try {
@@ -231,6 +241,15 @@ const startGame = async () => {
       player.jumpState = false
       player.facingRight = true
       player.isMoving = false
+      player.isDead = false
+      
+      // Disable pushing against enemies by making player body non-solid against enemies
+      if (player.body) {
+        player.body.onCollide('enemy', () => {
+          // Prevent pushing by stopping movement when colliding with enemies
+          player.vel.x = 0
+        })
+      }
 
       // start idle animation automatically
       player.play('idle')
@@ -245,7 +264,8 @@ const startGame = async () => {
       // -----------------------------
       const PLAYER_HP_BAR_WIDTH = 24
       const PLAYER_HP_BAR_HEIGHT = 3
-      player.health = game.player.maxHp
+      // Synchronize local health with game store
+      player.health = game.player.hp
 
       const hpBg = add([
         rect(PLAYER_HP_BAR_WIDTH + 4, PLAYER_HP_BAR_HEIGHT + 2),
@@ -257,10 +277,10 @@ const startGame = async () => {
         'playerHpBg'
       ])
 
-      const hpBar = add([
+      let hpBar = add([
         rect(PLAYER_HP_BAR_WIDTH, PLAYER_HP_BAR_HEIGHT),
-        pos(player.pos.x, player.pos.y - 50),
-        anchor('center'),
+        pos(player.pos.x - PLAYER_HP_BAR_WIDTH/2, player.pos.y - 50),
+        anchor('left'),
         color(0, 255, 0),
         layer('ui'),
         z(201),
@@ -268,24 +288,58 @@ const startGame = async () => {
       ])
 
       function updatePlayerHpBar() {
-        const pct = Math.max(0, player.health) / game.player.maxHp
+        const pct = Math.max(0, Math.min(1, player.health / game.player.maxHp))
         const w = Math.round(PLAYER_HP_BAR_WIDTH * pct)
-        hpBar.width = w
-        if (pct > 0.6) hpBar.color = color(0, 255, 0)
-        else if (pct > 0.3) hpBar.color = color(255, 255, 0)
-        else hpBar.color = color(255, 0, 0)
+        
+        // Update color based on health percentage
+        let newColor
+        if (pct > 0.6) {
+          newColor = color(0, 255, 0) // Green
+          console.log(`🟢 Player HP: ${player.health}/${game.player.maxHp} (${(pct*100).toFixed(1)}%) - Setting GREEN color`)
+        } else if (pct > 0.3) {
+          newColor = color(255, 255, 0) // Yellow
+          console.log(`🟡 Player HP: ${player.health}/${game.player.maxHp} (${(pct*100).toFixed(1)}%) - Setting YELLOW color`)
+        } else {
+          newColor = color(255, 0, 0) // Red
+          console.log(`🔴 Player HP: ${player.health}/${game.player.maxHp} (${(pct*100).toFixed(1)}%) - Setting RED color`)
+        }
+        
+        // Destroy old HP bar and create new one with correct width and color
+        destroy(hpBar)
+        
+        const pl = get('player')[0]
+        if (!pl) return
+        
+        const uiX = Math.round(pl.pos.x)
+        const uiY = Math.round(pl.pos.y - 50)
+        
+        // Create new HP bar with correct width and color
+        const newHpBar = add([
+          rect(w, PLAYER_HP_BAR_HEIGHT),
+          pos(uiX - PLAYER_HP_BAR_WIDTH/2, uiY),
+          anchor('left'),
+          newColor,
+          layer('ui'),
+          z(201),
+          'playerHpBar'
+        ])
+        
+        // Update the reference
+        hpBar = newHpBar
+        
+        console.log(`📊 Player HP Bar - Width: ${w}/${PLAYER_HP_BAR_WIDTH}, Color: ${newColor}, Percentage: ${(pct*100).toFixed(1)}%`)
       }
       updatePlayerHpBar()
 
       // Follow player (snap to integer pixels)
       onUpdate(() => {
         const pl = get('player')[0]
-        if (!pl) return
+        if (!pl || !hpBar) return
         const uiX = Math.round(pl.pos.x)
         const uiY = Math.round(pl.pos.y - 50)
         hpBg.pos.x = uiX
         hpBg.pos.y = uiY
-        hpBar.pos.x = uiX
+        hpBar.pos.x = uiX - PLAYER_HP_BAR_WIDTH/2
         hpBar.pos.y = uiY
       })
 
@@ -376,6 +430,7 @@ const startGame = async () => {
       function setPlayerSprite(spriteName: string, animationName: string, force = false) {
         const p: any = player
         if (p.isAttacking && !force) return
+        if (p.isDead && !force) return // Don't change sprite during death unless forced
         // Avoid resetting the same animation every frame (onKeyDown fires continuously)
         if (!force && p._lastSprite === spriteName && p._lastAnim === animationName) {
           player.flipX = !p.facingRight
@@ -391,25 +446,59 @@ const startGame = async () => {
       // Player movement
       onKeyDown('left', () => {
         const pl = get('player')[0]
-        if (!pl) return
-        pl.move(-pl.speed, 0)
-        pl.facingRight = false
-        pl.isMoving = true
-        // Switch to run animation when moving
-        if (pl.isOnGround && !pl.jumpState) {
-          setPlayerSprite('player', 'run')
+        if (!pl || pl.isDead) return
+        
+        // Check if there's an enemy in the way
+        const enemies = get('enemy')
+        let canMove = true
+        for (const enemy of enemies) {
+          const dx = pl.pos.x - enemy.pos.x
+          const dy = Math.abs(pl.pos.y - enemy.pos.y)
+          // If enemy is close and in the direction we want to move
+          if (dx > 0 && dx < 50 && dy < 30) {
+            canMove = false
+            console.log(`🚫 Blocked left movement - Enemy at dx: ${dx}, dy: ${dy}`)
+            break
+          }
+        }
+        
+        if (canMove) {
+          pl.move(-pl.speed, 0)
+          pl.facingRight = false
+          pl.isMoving = true
+          // Switch to run animation when moving
+          if (pl.isOnGround && !pl.jumpState) {
+            setPlayerSprite('player', 'run')
+          }
         }
       })
 
       onKeyDown('right', () => {
         const pl = get('player')[0]
-        if (!pl) return
-        pl.move(pl.speed, 0)
-        pl.facingRight = true
-        pl.isMoving = true
-        // Switch to run animation when moving
-        if (pl.isOnGround && !pl.jumpState) {
-          setPlayerSprite('player', 'run')
+        if (!pl || pl.isDead) return
+        
+        // Check if there's an enemy in the way
+        const enemies = get('enemy')
+        let canMove = true
+        for (const enemy of enemies) {
+          const dx = enemy.pos.x - pl.pos.x
+          const dy = Math.abs(pl.pos.y - enemy.pos.y)
+          // If enemy is close and in the direction we want to move
+          if (dx > 0 && dx < 50 && dy < 30) {
+            canMove = false
+            console.log(`🚫 Blocked right movement - Enemy at dx: ${dx}, dy: ${dy}`)
+            break
+          }
+        }
+        
+        if (canMove) {
+          pl.move(pl.speed, 0)
+          pl.facingRight = true
+          pl.isMoving = true
+          // Switch to run animation when moving
+          if (pl.isOnGround && !pl.jumpState) {
+            setPlayerSprite('player', 'run')
+          }
         }
       })
 
@@ -436,7 +525,7 @@ const startGame = async () => {
       // Enhanced jump function
       function performJump() {
         const pl = get('player')[0]
-        if (!pl) return
+        if (!pl || pl.isDead) return
         if (pl.jumpCount < pl.maxJumps) {
           pl.jumpCount++
           pl.jumpState = true
@@ -468,7 +557,7 @@ const startGame = async () => {
       // Player attack with X (scale 1.5 and transient hitbox)
       function performAttack() {
         const p: any = get('player')[0]
-        if (!p) return
+        if (!p || p.isDead) return
         if (p.isAttacking) return
         p.isAttacking = true
         // set attack sprite, preserve facing
@@ -505,36 +594,80 @@ const startGame = async () => {
         }, 520)
       }
 
-      onKeyPress('space', () => { performJump() })
+      onKeyPress('space', () => { 
+        const pl = get('player')[0]
+        if (!pl || pl.isDead) return
+        performJump() 
+      })
       onKeyPress('x', () => {
+        const pl = get('player')[0]
+        if (!pl || pl.isDead) return
         performAttack()
       })
 
       // Arrow Up jump as well
-      onKeyPress('up', () => { performJump() })
+      onKeyPress('up', () => { 
+        const pl = get('player')[0]
+        if (!pl || pl.isDead) return
+        performJump() 
+      })
 
       // Alternative controls
       onKeyDown('a', () => {
         const pl = get('player')[0]
-        if (!pl) return
-        pl.move(-pl.speed, 0)
-        pl.facingRight = false
-        pl.isMoving = true
-        // Switch to run animation when moving
-        if (pl.isOnGround && !pl.jumpState) {
-          setPlayerSprite('player', 'run')
+        if (!pl || pl.isDead) return
+        
+        // Check if there's an enemy in the way
+        const enemies = get('enemy')
+        let canMove = true
+        for (const enemy of enemies) {
+          const dx = pl.pos.x - enemy.pos.x
+          const dy = Math.abs(pl.pos.y - enemy.pos.y)
+          // If enemy is close and in the direction we want to move
+          if (dx > 0 && dx < 50 && dy < 30) {
+            canMove = false
+            console.log(`🚫 Blocked A key movement - Enemy at dx: ${dx}, dy: ${dy}`)
+            break
+          }
+        }
+        
+        if (canMove) {
+          pl.move(-pl.speed, 0)
+          pl.facingRight = false
+          pl.isMoving = true
+          // Switch to run animation when moving
+          if (pl.isOnGround && !pl.jumpState) {
+            setPlayerSprite('player', 'run')
+          }
         }
       })
 
       onKeyDown('d', () => {
         const pl = get('player')[0]
-        if (!pl) return
-        pl.move(pl.speed, 0)
-        pl.facingRight = true
-        pl.isMoving = true
-        // Switch to run animation when moving
-        if (pl.isOnGround && !pl.jumpState) {
-          setPlayerSprite('player', 'run')
+        if (!pl || pl.isDead) return
+        
+        // Check if there's an enemy in the way
+        const enemies = get('enemy')
+        let canMove = true
+        for (const enemy of enemies) {
+          const dx = enemy.pos.x - pl.pos.x
+          const dy = Math.abs(pl.pos.y - enemy.pos.y)
+          // If enemy is close and in the direction we want to move
+          if (dx > 0 && dx < 50 && dy < 30) {
+            canMove = false
+            console.log(`🚫 Blocked D key movement - Enemy at dx: ${dx}, dy: ${dy}`)
+            break
+          }
+        }
+        
+        if (canMove) {
+          pl.move(pl.speed, 0)
+          pl.facingRight = true
+          pl.isMoving = true
+          // Switch to run animation when moving
+          if (pl.isOnGround && !pl.jumpState) {
+            setPlayerSprite('player', 'run')
+          }
         }
       })
 
@@ -703,20 +836,36 @@ const startGame = async () => {
       // Damage + lives
       // lives already declared above
       function applyDamage(dmg: number) {
-        if (player.health <= 0) return
-        player.health = Math.max(0, player.health - dmg)
+        if (player.health <= 0 || player.isDead) return
+        console.log(`⚔️ Applying damage: ${dmg}, Current HP: ${player.health}`)
+        
+        // Update game store first
+        game.damagePlayer(dmg)
+        // Then sync local health with game store
+        player.health = game.player.hp
+        
+        console.log(`💔 After damage: Local HP: ${player.health}, Game store HP: ${game.player.hp}`)
         updatePlayerHpBar()
         if (player.health <= 0) {
-          game.loseLife()
-          lives = game.lives
-          livesText.text = `Lives: ${lives}`
-          saveCookie.value = { score: game.score, lives: game.lives, lastLevel: level }
-          if (lives <= 0) {
-            go('gameOver', { level })
-          } else {
-            // restart same level with one fewer life
-            go('game', { level, lives })
-          }
+          console.log(`💀 Player died! Triggering death animation...`)
+          // Trigger death animation
+          player.isDead = true
+          setPlayerSprite('player_death', 'death', true)
+          
+          // Wait for death animation to complete before respawning
+          setTimeout(() => {
+            console.log(`🔄 Respawning player after death animation...`)
+            game.loseLife()
+            lives = game.lives
+            livesText.text = `Lives: ${lives}`
+            saveCookie.value = { score: game.score, lives: game.lives, lastLevel: level }
+            if (lives <= 0) {
+              go('gameOver', { level })
+            } else {
+              // restart same level with one fewer life
+              go('game', { level, lives })
+            }
+          }, 2000) // Wait 2 seconds for death animation
         }
       }
 
@@ -794,18 +943,50 @@ const startGame = async () => {
             layer('ui'),
             z(19),
           ])
-          const skHp = add([
+          let skHp = add([
             rect(40, 6),
-            pos(x, y - 60),
-            anchor('center'),
+            pos(x - 20, y - 60),
+            anchor('left'),
             color(0, 255, 0),
             layer('ui'),
             z(20),
           ])
           function updateSkHp() {
-            const p = sk.health / sk.maxHealth
-            skHp.width = Math.round(40 * p)
-            skHp.color = p > 0.5 ? color(0, 255, 0) : p > 0.25 ? color(255, 255, 0) : color(255, 0, 0)
+            const p = Math.max(0, Math.min(1, sk.health / sk.maxHealth))
+            const w = Math.round(40 * p)
+            
+            let newColor
+            if (p > 0.5) {
+              newColor = color(0, 255, 0) // Green
+              console.log(`🟢 Skeleton HP: ${sk.health}/${sk.maxHealth} (${(p*100).toFixed(1)}%) - Setting GREEN color`)
+            } else if (p > 0.25) {
+              newColor = color(255, 255, 0) // Yellow
+              console.log(`🟡 Skeleton HP: ${sk.health}/${sk.maxHealth} (${(p*100).toFixed(1)}%) - Setting YELLOW color`)
+            } else {
+              newColor = color(255, 0, 0) // Red
+              console.log(`🔴 Skeleton HP: ${sk.health}/${sk.maxHealth} (${(p*100).toFixed(1)}%) - Setting RED color`)
+            }
+            
+            // Destroy old HP bar and create new one
+            destroy(skHp)
+            
+            const uiX = Math.round(sk.pos.x)
+            const uiY = Math.round(sk.pos.y - 60)
+            
+            // Create new HP bar with correct width and color
+            const newSkHp = add([
+              rect(w, 6),
+              pos(uiX - 20, uiY),
+              anchor('left'),
+              newColor,
+              layer('ui'),
+              z(20),
+            ])
+            
+            // Update the reference
+            skHp = newSkHp
+            
+            console.log(`📊 Skeleton HP Bar - Width: ${w}/40, Color: ${newColor}, Percentage: ${(p*100).toFixed(1)}%`)
           }
           updateSkHp()
 
@@ -820,7 +1001,9 @@ const startGame = async () => {
             const uiX = Math.round(sk.pos.x)
             const uiY = Math.round(sk.pos.y - 60)
             skBg.pos.x = uiX; skBg.pos.y = uiY
-            skHp.pos.x = uiX; skHp.pos.y = uiY
+            if (skHp) {
+              skHp.pos.x = uiX - 20; skHp.pos.y = uiY
+            }
 
             // Dynamically tighten collider while in air
             const airborne = Math.abs(sk.vel.y) > 1
@@ -891,10 +1074,12 @@ const startGame = async () => {
           // When hit by player attack (placeholder tag)
           sk.onCollide('playerAttack', () => {
             if (sk.isDead) return
+            console.log(`⚔️ Skeleton taking damage: ${sk.health} -> ${sk.health - 1}`)
             sk.health -= 1
             updateSkHp()
             setSkAnim('hit')
             if (sk.health <= 0) {
+              console.log(`💀 Skeleton died!`)
               sk.isDead = true
               setSkAnim('dead')
               sk.vel.x = 0; sk.vel.y = 0

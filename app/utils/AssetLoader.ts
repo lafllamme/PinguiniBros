@@ -101,6 +101,12 @@ export async function loadAllAssets(): Promise<void> {
     }))
   } catch {}
 
+  // Win overlay background
+  try {
+    const winOverlayUrl = new URL('../assets/sprites/general/overlay/win/win.png', import.meta.url).href
+    spriteLoads.push(loadSprite('win_overlay', winOverlayUrl))
+  } catch {}
+
   // Basic placeholder items
   spriteLoads.push(loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))
   spriteLoads.push(loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))

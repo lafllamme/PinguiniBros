@@ -1149,7 +1149,7 @@ const startGame = async () => {
             }
             
             // Level completion requires getting close (decreased range for better feel)
-            if (doorAnimationLooping && distance < 250) { // Smaller range for completion
+            if (doorAnimationLooping && distance < 180) { // Smaller range for completion
               console.log('[Door] Player close to animated door (distance:', distance, '), ending level')
               levelCompleted = true
               doorAnimationLooping = false
@@ -1172,26 +1172,74 @@ const startGame = async () => {
       // Coin/music handled by GameScene now
     })
 
-    // Simple win scene
+    // Epic win scene with background overlay
     scene('win', () => {
+      // Add win overlay background
       add([
-        text('You Win! 🎉', {size: 32}),
+        sprite('win_overlay'),
+        pos(width() / 2, height() / 2),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(100),
+        scale(1.2), // Scale up slightly to cover more screen
+      ])
+
+      // Epic win title
+      add([
+        text('VICTORY! 🏆', {size: 64, font: 'arial'}),
+        pos(width() / 2, height() / 2 - 80),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(102),
+        color(255, 215, 0), // Gold color
+      ])
+
+      // Epic subtitle
+      add([
+        text('Level Complete!', {size: 32, font: 'arial'}),
         pos(width() / 2, height() / 2 - 20),
         anchor('center'),
         layer('ui'),
         fixed(),
-        z(101),
+        z(102),
+        color(255, 255, 255), // White color
       ])
 
+      // Instructions with epic styling
       add([
-        text('Press R to restart or Enter for Level Select', {size: 16}),
-        pos(width() / 2, height() / 2 + 20),
+        text('Press X to continue to next level', {size: 24, font: 'arial'}),
+        pos(width() / 2, height() / 2 + 40),
         anchor('center'),
         layer('ui'),
         fixed(),
-        z(101),
+        z(102),
+        color(255, 255, 255), // White color
       ])
 
+      // Alternative controls
+      add([
+        text('Or press R to restart | Enter for Level Select', {size: 18, font: 'arial'}),
+        pos(width() / 2, height() / 2 + 80),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(102),
+        color(200, 200, 200), // Light gray color
+      ])
+
+      // Key handlers
+      onKeyPress('x', () => {
+        // Go to next level or back to level select if no more levels
+        const nextLevel = game.currentLevel + 1
+        if (nextLevel <= 3) {
+          game.currentLevel = nextLevel
+          go('game')
+        } else {
+          go('levelSelect')
+        }
+      })
       onKeyPress('r', () => go('game'))
       onKeyPress('enter', () => go('levelSelect'))
       onKeyPress('return', () => go('levelSelect'))

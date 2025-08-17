@@ -1095,10 +1095,39 @@ const startGame = async () => {
         go('win')
       })
       
-      // Listen for door animation completion (Level 3)
+      // Level 3 door animation and completion
       if (level === 3) {
-        // Check for level completion tag
+        let doorAnimationStarted = false
+        
         onUpdate(() => {
+          const door = get('goal')[0]
+          const player = get('player')[0]
+          
+          if (door && player && !doorAnimationStarted) {
+            const distance = Math.abs(player.pos.x - door.pos.x) + Math.abs(player.pos.y - door.pos.y)
+            if (distance < 50) { // Close enough to trigger
+              doorAnimationStarted = true
+              console.log('[Door] Player touched door, starting animation')
+              
+              // Animate door opening
+              let frame = 0
+              const animate = () => {
+                if (frame <= 7) {
+                  door.frame = frame
+                  frame++
+                  setTimeout(animate, 150)
+                } else {
+                  console.log('[Door] Animation completed, ending level')
+                  // End level
+                  door.unuse('goal')
+                  door.use('levelComplete')
+                }
+              }
+              animate()
+            }
+          }
+          
+          // Check for level completion
           const completedDoor = get('levelComplete')[0]
           if (completedDoor) {
             console.log('[Door] Level completion detected')

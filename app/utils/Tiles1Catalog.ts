@@ -13,6 +13,7 @@ type KaplayCtx = {
   scale: (...args: any[]) => any
   area?: (...args: any[]) => any
   body?: (...args: any[]) => any
+  get?: (...args: any[]) => any
 }
 
 function placeTile(ctx: KaplayCtx, col: number, row: number, x: number, y: number) {
@@ -516,9 +517,9 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
     ])
   })
   
-  // Create door at the end of the level
+  // Create door at the end of the level - position it correctly
   const doorX = 3000
-  const doorY = characterGroundY - tileSize
+  const doorY = groundTopY - (4 * tileSize) // 4 tiles above ground surface - higher position
   spawnDoor(ctx, doorX, doorY, 2.0)
   
   console.log('[Level3] Dynamic responsive sand theme applied')
@@ -530,16 +531,16 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
     tileSize,
     platformPositions,
     characterGroundY,
-    doorY: characterGroundY - tileSize // Door position 1 tile above character ground
+    doorY: groundTopY - (4 * tileSize) // Door position 4 tiles above ground
   }
 }
 
-// Door functions
+// Door functions - SIMPLE AND WORKING
 export function spawnDoor(ctx: KaplayCtx, x: number, y: number, scaleFactor: number = 2.0) {
   const { add, sprite, pos, anchor, layer, z, scale, area, body } = ctx
   
   const door = add([
-    sprite('door', { frame: 0 }), // Start with closed door (frame 0)
+    sprite('door', { frame: 0 }),
     pos(x, y),
     anchor('topleft'),
     layer('game'),
@@ -550,50 +551,7 @@ export function spawnDoor(ctx: KaplayCtx, x: number, y: number, scaleFactor: num
     'goal'
   ])
   
-  let hasOpened = false
-  let currentFrame = 0
-  let animationInterval: any = null
-  let loopCount = 0
-  const totalLoops = 3 // Animation läuft 3 mal durch
-  
-  // Play open animation when player touches - use Kaplay's collision system
-  if (door.onCollide) {
-    door.onCollide('player', () => {
-      if (!hasOpened) {
-        hasOpened = true
-        console.log('[Door] Starting looping animation (3 cycles)')
-        
-        // Animate through all 8 frames, multiple times
-        animationInterval = setInterval(() => {
-          currentFrame++
-          
-          if (currentFrame > 7) {
-            // Reset to frame 0 and increment loop count
-            currentFrame = 0
-            loopCount++
-            console.log(`[Door] Completed loop ${loopCount}/${totalLoops}`)
-          }
-          
-          door.frame = currentFrame
-          
-          // After 3 complete loops, end the animation
-          if (loopCount >= totalLoops && currentFrame >= 7) {
-            clearInterval(animationInterval)
-            console.log('[Door] Animation completed, ending level')
-            
-            // End level after animation
-            setTimeout(() => {
-              // Trigger level completion by removing goal tag and adding a completion flag
-              door.unuse('goal')
-              door.use('levelComplete')
-            }, 1000) // 1 second delay to show final frame
-          }
-        }, 150) // 150ms per frame = 1.2 seconds per loop, 3.6 seconds total
-      }
-    })
-  } else {
-    console.warn('[Door] onCollide not available, door animation disabled')
-  }
+  console.log('[Door] Created door at', x, y)
   
   return door
 }

@@ -9,6 +9,8 @@ export type KaplayLike = {
 let K: KaplayLike | null = null
 let loaded = false
 
+
+
 export function initAssetLoader(ctx: KaplayLike) {
   K = ctx
 }
@@ -79,6 +81,15 @@ export async function loadAllAssets(): Promise<void> {
   const phase2Url = new URL('../assets/sprites/general/phase2.png', import.meta.url).href
   spriteLoads.push(loadSprite('phase1', phase1Url))
   spriteLoads.push(loadSprite('phase2', phase2Url))
+
+  // Tiles1: 16x16 grid (256x256), tile size 16px
+  try {
+    const tiles1Url = new URL('../assets/sprites/general/tiles/tiles1.png', import.meta.url).href
+    spriteLoads.push(loadSprite('tiles1', tiles1Url, {
+      sliceX: 16,
+      sliceY: 16,
+    }))
+  } catch {}
 
   // Basic placeholder items
   spriteLoads.push(loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))

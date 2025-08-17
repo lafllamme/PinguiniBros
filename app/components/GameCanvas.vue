@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col items-center justify-center min-h-screen">
-    <!-- Game Canvas - immer zentriert -->
+  <div class="w-full h-full">
+    <!-- Game Canvas - full screen -->
     <div ref="containerEl" class="game-container">
       <canvas
         ref="gameCanvas"
@@ -10,7 +10,7 @@
     </div>
     
     <!-- Overlay Menu - nur wenn Spiel nicht gestartet -->
-    <div v-if="!gameStarted" class="absolute inset-0 flex items-center justify-center">
+    <div v-if="!gameStarted" class="fixed inset-0 flex items-center justify-center z-50">
       <div class="grid grid-cols-1 justify-center rounded-3xl bg-pureBlack/40 backdrop-blur-lg p-8">
         <div class="mx-10">
           <h1
@@ -43,6 +43,8 @@ import { Level1 } from '@/assets/levels/level_1'
 import { Level2 } from '@/assets/levels/level_2'
 import { onScoreChanged, initScore } from '@/utils/coinSystem'
 import { initAssetLoader, loadAllAssets } from '../utils/AssetLoader'
+import { spawnTiles1Board, spawnTiles1Showcase, spawnTiles1Picker, spawnTiles1RowsSeparated } from '@/utils/Tiles1Demo'
+import { spawnTiles1CatalogShowcase } from '@/utils/Tiles1Catalog'
 import kaplay from 'kaplay'
 // VueUse
 import {useWindowSize, useElementSize, useDocumentVisibility} from '@vueuse/core'
@@ -59,13 +61,13 @@ const {width: winW, height: winH} = useWindowSize()
 const headerEl = shallowRef<HTMLElement | null>(null)
 const {height: headerH} = useElementSize(headerEl)
 
-const BASE_W = 800
-const BASE_H = 600
+// Use full window dimensions
+const BASE_W = computed(() => Math.max(320, winW.value))
+const BASE_H = computed(() => Math.max(240, winH.value))
 
 function computeScale(): number {
-  const availW = Math.max(320, Math.floor(winW.value * 0.9))
-  const availH = Math.max(240, Math.floor(winH.value * 0.9))
-  return Math.max(1, Math.min(availW / BASE_W, availH / BASE_H))
+  // No scaling needed since we're using full window size
+  return 1
 }
 
 const startGame = async () => {
@@ -79,8 +81,8 @@ const startGame = async () => {
     // Initialize KAPLAY
     gameInstance = kaplay({
       canvas: gameCanvas.value,
-      width: BASE_W,
-      height: BASE_H,
+      width: BASE_W.value,
+      height: BASE_H.value,
       scale: scaleFactor,
       global: true,
     })
@@ -163,9 +165,45 @@ const startGame = async () => {
       // Load phase background for this level
       loadPhaseBackground(level)
       
-      const chosen = level >= 2 ? Level2 : Level1
-      const gs = new GameScene(chosen)
-      gs.init()
+      // Create tiled background to cover full width
+      // Try to get the actual background sprite width, fallback to 1536 for new phase1.png
+      const bgSprite = sprite('level_bg')
+      const bgWidth = bgSprite?.width || 1536 // Use actual width or fallback to new image width
+      // Create many more tiles to ensure full coverage
+      const tilesNeeded = Math.max(5, Math.ceil(BASE_W.value / bgWidth) + 3)
+      
+      console.log(`🎨 Creating ${tilesNeeded} background tiles for canvas width ${BASE_W.value}px`)
+      
+      // Create tiled background to cover full width
+      for (let i = 0; i < tilesNeeded; i++) {
+        add([
+          sprite('level_bg'), 
+          pos(i * bgWidth, 0), 
+          anchor('topleft'), 
+          layer('bg'), 
+          fixed()
+        ])
+      }
+      
+      if (level === 0) {
+        try {
+          // Use normal level width, just make ground transparent
+          const wideLevel = { ...Level1, width: Level1.width }
+          const gs = new GameScene(wideLevel)
+          gs.init()
+          
+          // 16x16 grid board for reference (left side)
+          spawnTiles1RowsSeparated({ add, sprite, pos, anchor, layer, z, text, color }, 60, 80, { withRowLabels: true, withColLabels: true })
+          // Showcase: kleine Kombis (unten)
+          spawnTiles1Showcase({ add, sprite, pos, anchor, layer, z }, 40, 520)
+          // Catalog: constrain to visible height area
+          spawnTiles1CatalogShowcase({ add, sprite, pos, anchor, layer, z, text, color, scale }, 820, 80, 20, 30, 80, 15, 25)
+        } catch {}
+      } else {
+        const chosen = level >= 2 ? Level2 : Level1
+        const gs = new GameScene(chosen)
+        gs.init()
+      }
 
       // Add custom properties to player
       const player = get('player')[0]
@@ -219,7 +257,8 @@ const startGame = async () => {
       // Player Health UI is created and managed inside GameScene.createPlayerUI()
 
       // Create ground across the entire level width
-      for (let x = 0; x < chosen.width; x += 200) {
+      const worldWidth = level === 0 ? Math.max(50000, BASE_W.value * 10) : (level >= 2 ? Level2.width : Level1.width)
+      for (let x = 0; x < worldWidth; x += 200) {
         add([
           rect(200, 50),
           pos(x, 550),
@@ -228,70 +267,63 @@ const startGame = async () => {
           color(139, 69, 19),
           layer('game'),
           z(1),
+          'ground',
+          // Make ground transparent for debug level
+          ...(level === 0 ? [opacity(0)] : [])
+        ])
+      }
+
+      if (level !== 0) {
+        // Grass platforms (green layer)
+        add([
+          rect(100, 20),
+          pos(300, 450),
+          area(),
+          body({isStatic: true}),
+          color(34, 139, 34),
+          layer('game'),
+          z(1),
+          'ground'
+        ])
+
+        add([
+          rect(100, 20),
+          pos(700, 380),
+          area(),
+          body({isStatic: true}),
+          color(34, 139, 34),
+          layer('game'),
+          z(1),
+          'ground'
+        ])
+
+        add([
+          rect(100, 20),
+          pos(1100, 320),
+          area(),
+          body({isStatic: true}),
+          color(34, 139, 34),
+          layer('game'),
+          z(1),
+          'ground'
+        ])
+
+        add([
+          rect(120, 20),
+          pos(1450, 300),
+          area(),
+          body({isStatic: true}),
+          color(34, 139, 34),
+          layer('game'),
+          z(1),
           'ground'
         ])
       }
 
-      // Grass platforms (green layer)
-      add([
-        rect(100, 20),
-        pos(300, 450),
-        area(),
-        body({isStatic: true}),
-        color(34, 139, 34),
-        layer('game'),
-        z(1),
-        'ground'
-      ])
-
-      add([
-        rect(100, 20),
-        pos(700, 380),
-        area(),
-        body({isStatic: true}),
-        color(34, 139, 34),
-        layer('game'),
-        z(1),
-        'ground'
-      ])
-
-      add([
-        rect(100, 20),
-        pos(1100, 320),
-        area(),
-        body({isStatic: true}),
-        color(34, 139, 34),
-        layer('game'),
-        z(1),
-        'ground'
-      ])
-
-      add([
-        rect(120, 20),
-        pos(1450, 300),
-        area(),
-        body({isStatic: true}),
-        color(34, 139, 34),
-        layer('game'),
-        z(1),
-        'ground'
-      ])
-
-      add([
-        rect(140, 20),
-        pos(1750, 260),
-        area(),
-        body({isStatic: true}),
-        color(34, 139, 34),
-        layer('game'),
-        z(1),
-        'ground'
-      ])
-
       // Goal at the end of the level
       add([
         rect(20, 120),
-        pos(chosen.width - 80, 430),
+        pos(worldWidth - 80, 430),
         area(),
         color(255, 215, 0),
         layer('game'),
@@ -577,33 +609,40 @@ const startGame = async () => {
       })
 
       // UI with colors that match the background (use Pinia store)
-      const scoreText = add([
-        text(''),
-        pos(20, 20),
-        color(255, 255, 255),
-        layer('ui'),
-        fixed(),
-        z(100),
-      ])
-      scoreText.text = `Score: ${game.score}`
+      const hideHud = level === 0
+      let scoreText: any = null
+      let livesText: any = null
+      if (!hideHud) {
+        scoreText = add([
+          text(''),
+          pos(20, 20),
+          color(255, 255, 255),
+          layer('ui'),
+          fixed(),
+          z(100),
+        ])
+        scoreText.text = `Score: ${game.score}`
+      }
 
-      // Use lives from store
-      lives = game.lives
-      const livesText = add([
-        text(''),
-        pos(20, 50),
-        color(255, 255, 255),
-        layer('ui'),
-        fixed(),
-        z(100),
-      ])
-      // set initial lives display based on param
-      livesText.text = `Lives: ${lives}`
+              // Use lives from store
+        lives = game.lives
+        if (!hideHud) {
+          livesText = add([
+          text(''),
+          pos(20, 50),
+          color(255, 255, 255),
+          layer('ui'),
+          fixed(),
+          z(100),
+        ])
+        // set initial lives display based on param
+        livesText.text = `Lives: ${lives}`
+      }
       // keep cookie in sync + update score on coin changes
       saveCookie.value = { score: game.score, lives: game.lives, lastLevel: level }
       onScoreChanged((n: number) => {
         game.addScore(n - game.score)
-        scoreText.text = `Score: ${game.score}`
+        if (scoreText) scoreText.text = `Score: ${game.score}`
         saveCookie.value = { score: game.score, lives: game.lives, lastLevel: level }
       })
 
@@ -718,7 +757,7 @@ const startGame = async () => {
             console.log(`🔄 Respawning player after death animation...`)
             game.loseLife()
             lives = game.lives
-            livesText.text = `Lives: ${lives}`
+            if (livesText) livesText.text = `Lives: ${lives}`
             saveCookie.value = { score: game.score, lives: game.lives, lastLevel: level }
             if (lives <= 0) {
               go('gameOver', { level })
@@ -1018,7 +1057,8 @@ const startGame = async () => {
         let targetX = pl.pos.x
         const half = width() / 2
         if (targetX < half) targetX = half
-        if (targetX > chosen.width - half) targetX = chosen.width - half
+        const maxX = level === 0 ? Math.max(50000, BASE_W.value * 10) : (level >= 2 ? Level2.width : Level1.width)
+        if (targetX > maxX - half) targetX = maxX - half
         setCamPos(targetX, height() / 2)
       })
 
@@ -1087,13 +1127,23 @@ const startGame = async () => {
 
     // Menu scene -> Go to level select
     scene('menu', () => {
-      add([
-        sprite('level_bg'),
-        pos(0, 0),
-        anchor('topleft'),
-        layer('bg'),
-        fixed(),
-      ])
+      // Create tiled background to cover full width
+      // Try to get the actual background sprite width, fallback to 1536 for new phase1.png
+      const bgSprite = sprite('level_bg')
+      const bgWidth = bgSprite?.width || 1536 // Use actual width or fallback to new image width
+      // Create many more tiles to ensure full coverage
+      const tilesNeeded = Math.max(5, Math.ceil(BASE_W.value / bgWidth) + 3)
+      
+      // Create tiled background to cover full width
+      for (let i = 0; i < tilesNeeded; i++) {
+        add([
+          sprite('level_bg'), 
+          pos(i * bgWidth, 0), 
+          anchor('topleft'), 
+          layer('bg'), 
+          fixed()
+        ])
+      }
 
       const title = add([
         text('Pinguini Bros', {size: 36}),
@@ -1140,13 +1190,23 @@ const startGame = async () => {
 
     // Level select scene (mock 1..99)
     scene('levelSelect', () => {
-      add([
-        sprite('level_bg'),
-        pos(0, 0),
-        anchor('topleft'),
-        layer('bg'),
-        fixed(),
-      ])
+      // Create tiled background to cover full width
+      // Try to get the actual background sprite width, fallback to 1536 for new phase1.png
+      const bgSprite = sprite('level_bg')
+      const bgWidth = bgSprite?.width || 1536 // Use actual width or fallback to new image width
+      // Create many more tiles to ensure full coverage
+      const tilesNeeded = Math.max(5, Math.ceil(BASE_W.value / bgWidth) + 3)
+      
+      // Create tiled background to cover full width
+      for (let i = 0; i < tilesNeeded; i++) {
+        add([
+          sprite('level_bg'), 
+          pos(i * bgWidth, 0), 
+          anchor('topleft'), 
+          layer('bg'), 
+          fixed()
+        ])
+      }
 
       add([
         text('Select Level', {size: 28}),
@@ -1241,18 +1301,19 @@ onMounted(() => {
 <style scoped>
 .game-container {
   position: relative;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .game-canvas {
-  border: 2px solid #333;
-  border-radius: 8px;
+  width: 100vw;
+  height: 100vh;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 

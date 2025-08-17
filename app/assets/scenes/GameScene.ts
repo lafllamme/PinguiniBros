@@ -32,7 +32,7 @@ export class GameScene {
       opacity,
       rand,
     } as any)
-    this.createBackground()
+    // Background is now created in the main scene
     this.createPlayer()
     this.createPlayerUI()
     this.createPlatforms()

@@ -1351,51 +1351,71 @@ const startGame = async () => {
 
     // Level select scene (mock 1..99)
     scene('levelSelect', () => {
-      // Create tiled background to cover full width
-      // Try to get the actual background sprite width, fallback to 1536 for new phase1.png
-      const bgSprite = sprite('level_bg')
-      const bgWidth = bgSprite?.width || 1536 // Use actual width or fallback to new image width
-      // Create many more tiles to ensure full coverage
-      const tilesNeeded = Math.max(5, Math.ceil(BASE_W.value / bgWidth) + 3)
-      
-      // Create tiled background to cover full width
-      for (let i = 0; i < tilesNeeded; i++) {
-        add([
-          sprite('level_bg'), 
-          pos(i * bgWidth, 0), 
-          anchor('topleft'), 
-          layer('bg'), 
-          fixed()
-        ])
-      }
-
+      // Level selection background
       add([
-        text('Select Level', {size: 28}),
-        pos(width() / 2, 120),
+        sprite('selection'),
+        pos(width() / 2, height() / 2),
         anchor('center'),
         layer('ui'),
         fixed(),
         z(100),
+        scale(1.2), // Scale up to cover full screen
       ])
 
+      // Title with shadow effect for indie game look
+      add([
+        text('SELECT LEVEL', {size: 42, font: 'monospace'}),
+        pos(width() / 2 + 2, 120 + 2),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(102),
+        color(0, 0, 0), // Shadow
+      ])
+      
+      add([
+        text('SELECT LEVEL', {size: 42, font: 'monospace'}),
+        pos(width() / 2, 120),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(103),
+        color(255, 215, 0), // Gold color for premium feel
+      ])
+
+      // Calculate centered grid positioning
       const cols = 10
-      const startX = 120
-      const startY = 180
-      const gapX = 60
-      const gapY = 40
+      const rows = Math.ceil(99 / cols)
+      const gridWidth = cols * 80 // 80px per column
+      const gridHeight = rows * 50 // 50px per row
+      const startX = width() / 2 - gridWidth / 2 + 40 // Center the grid
+      const startY = 200
+      const gapX = 80
+      const gapY = 50
+      
       for (let i = 1; i <= 99; i++) {
         const col = (i - 1) % cols
         const row = Math.floor((i - 1) / cols)
         const btn = add([
-          text(String(i), {size: 18}),
+          text(String(i), {size: 24, font: 'monospace'}),
           pos(startX + col * gapX, startY + row * gapY),
           anchor('center'),
           area(),
           layer('ui'),
           fixed(),
-          z(100),
+          z(102),
+          color(255, 255, 255), // White color
           `level-${i}`
         ])
+        
+        // Add hover effect for better UX
+        btn.onHover(() => {
+          btn.color = rgb(255, 215, 0) // Gold on hover
+        })
+        btn.onHoverEnd(() => {
+          btn.color = rgb(255, 255, 255) // Back to white
+        })
+        
         onClick(`level-${i}`, () => go('game', {level: i}))
       }
 

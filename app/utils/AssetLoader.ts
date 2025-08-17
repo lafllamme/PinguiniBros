@@ -125,6 +125,12 @@ export async function loadAllAssets(): Promise<void> {
     spriteLoads.push(loadSprite('loose', looseUrl))
   } catch {}
 
+  // Level selection background
+  try {
+    const selectionUrl = new URL('../assets/sprites/general/overlay/selection/selection.png', import.meta.url).href
+    spriteLoads.push(loadSprite('selection', selectionUrl))
+  } catch {}
+
   // Basic placeholder items
   spriteLoads.push(loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))
   spriteLoads.push(loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))

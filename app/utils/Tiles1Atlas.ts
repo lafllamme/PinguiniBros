@@ -17,6 +17,10 @@ type KaplayCtx = {
   anchor: (...args: any[]) => any
   layer?: (...args: any[]) => any
   z?: (...args: any[]) => any
+  scale?: (...args: any[]) => any
+  opacity?: (...args: any[]) => any
+  area?: (...args: any[]) => any
+  body?: (...args: any[]) => any
 }
 
 export function makeTiles1Spawner(ctx: KaplayCtx) {

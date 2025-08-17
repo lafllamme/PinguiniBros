@@ -14,6 +14,15 @@ export const useGameStore = defineStore('game', () => {
   // Dynamic screen dimensions
   const screenWidth = ref(800)
   const screenHeight = ref(600)
+  
+  // Level grid information
+  const levelGrid = ref({
+    tileSize: 32, // 16px * 2.0 scale
+    groundRows: 5, // 4 rows sand_block_2 + 1 row sand_block_3
+    groundBottomY: 0,
+    groundTopY: 0,
+    characterGroundY: 0
+  })
 
   // derived
   const hpPercent = computed(() => player.hp / player.maxHp)
@@ -74,6 +83,34 @@ export const useGameStore = defineStore('game', () => {
     screenWidth.value = width
     screenHeight.value = height
   }
+  
+  function setLevelGrid(gridInfo: {
+    tileSize?: number
+    groundRows?: number
+    groundBottomY?: number
+    groundTopY?: number
+    characterGroundY?: number
+  }) {
+    Object.assign(levelGrid.value, gridInfo)
+  }
+  
+  function calculateLevelGrid(screenHeight: number) {
+    const tileSize = levelGrid.value.tileSize
+    const groundRows = levelGrid.value.groundRows
+    
+    // Build from bottom up: start at screen bottom, build ground rows upward
+    const groundBottomY = screenHeight - tileSize // Bottom row starts at screen bottom
+    const groundTopY = groundBottomY - ((groundRows - 1) * tileSize) // Top row is (groundRows-1) tiles up
+    const characterGroundY = groundTopY // Character ground is ON the ground top (no gap)
+    
+    setLevelGrid({
+      groundBottomY,
+      groundTopY,
+      characterGroundY
+    })
+    
+    return { groundBottomY, groundTopY, characterGroundY, tileSize }
+  }
 
   return {
     // state
@@ -85,6 +122,7 @@ export const useGameStore = defineStore('game', () => {
     lastHealAt,
     screenWidth,
     screenHeight,
+    levelGrid,
     // derived
     hpPercent,
     hpBucket,
@@ -100,6 +138,8 @@ export const useGameStore = defineStore('game', () => {
     healPlayer,
     respawnPlayer,
     setScreenDimensions,
+    setLevelGrid,
+    calculateLevelGrid,
     isRegenReady,
     regenCooldownMs,
   }

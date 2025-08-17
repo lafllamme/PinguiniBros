@@ -22,13 +22,13 @@ function placeTile(ctx: KaplayCtx, col: number, row: number, x: number, y: numbe
     ctx.pos(x, y),
     ctx.anchor('topleft'),
     ctx.layer('game'),
-    ctx.z(1),
+    ctx.z(3), // Higher z-index to appear above character ground
     ctx.scale(1.0), // No scaling to prevent overlapping
   ])
 }
 
 function placeRect(ctx: KaplayCtx, col: number, row: number, w: number, h: number, x: number, y: number, scaleFactor: number = 1.0) {
-  const parent = ctx.add([ctx.pos(x, y)])
+  const parent = ctx.add([ctx.pos(x, y), ctx.layer('game'), ctx.z(3)]) // Higher z-index for rects
   for (let dy = 0; dy < h; dy++) {
     for (let dx = 0; dx < w; dx++) {
       parent.add([
@@ -45,7 +45,7 @@ function placeComposite(ctx: KaplayCtx, coords: Array<[number, number]>, x: numb
   // coords are (col,row)
   const minC = Math.min(...coords.map(([c]) => c))
   const minR = Math.min(...coords.map(([, r]) => r))
-  const parent = ctx.add([ctx.pos(x, y)])
+  const parent = ctx.add([ctx.pos(x, y), ctx.layer('game'), ctx.z(3)]) // Higher z-index for composites
   for (const [c, r] of coords) {
     parent.add([
       ctx.sprite('tiles1', { frame: t1Index(c, r) }),
@@ -402,26 +402,39 @@ export function spawnSandPlatform(ctx: KaplayCtx, x: number, y: number, width: n
 export function spawnLevel3SandTheme(ctx: KaplayCtx) {
   const { add, sprite, pos, anchor, layer, z, scale } = ctx
   
-  // Dynamic responsive ground positioning - get from Pinia store
+  // Get level grid information from Pinia store
   const game = useGameStore()
-  const screenHeight = game.screenHeight
-  const tileSize = 16 * 2.0 // 2x scaling = 32px per tile
+  
+  // Ensure levelGrid is initialized
+  if (!game.levelGrid) {
+    console.warn('[Level3] Level grid not initialized, using defaults')
+    const defaultTileSize = 32
+    const defaultGroundBottomY = 600 - (5 * defaultTileSize)
+    const defaultGroundTopY = defaultGroundBottomY - defaultTileSize
+    const defaultCharacterGroundY = defaultGroundTopY - defaultTileSize
+    
+    return {
+      groundBottomY: defaultGroundBottomY,
+      groundTopY: defaultGroundTopY,
+      tileSize: defaultTileSize,
+      platformPositions: [],
+      characterGroundY: defaultCharacterGroundY,
+      doorY: defaultGroundTopY - (2 * defaultTileSize)
+    }
+  }
+  
+  const { groundBottomY, groundTopY, characterGroundY, tileSize } = game.levelGrid
   const groundWidth = 3200
   
-  // Calculate ground position: start from bottom, build up
-  const groundBottomY = screenHeight - (4 * tileSize) // 4 rows of sand_block_2 at bottom
-  const groundTopY = groundBottomY - (1 * tileSize) // 1 row of sand_block_3 on top
-  const characterGroundY = groundTopY - tileSize // 1 tile above ground for characters
-  
-  console.log(`[Level3] Building ground: bottom=${groundBottomY}, top=${groundTopY}, tileSize=${tileSize}`)
+  console.log(`[Level3] Building ground: bottom=${groundBottomY}, top=${groundTopY}, characterGround=${characterGroundY}, tileSize=${tileSize}`)
   
   // Build ground layer by layer (like a cake)
-  // Layer 1-4: sand_block_2 (base)
+  // Layer 1-4: sand_block_2 (base) - start from bottom
   for (let row = 0; row < 4; row++) {
     for (let x = 0; x < groundWidth; x += tileSize) {
       add([
         sprite('tiles1', { frame: t1Index(2, 1) }), // sand_block_2
-        pos(x, groundBottomY + (row * tileSize)),
+        pos(x, groundBottomY - (row * tileSize)), // Build upward from bottom
         anchor('topleft'),
         layer('game'),
         z(1),
@@ -439,6 +452,19 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
       layer('game'),
       z(1),
       scale(2.0),
+    ])
+  }
+  
+  // Invisible character ground platform - exactly where characters should stand
+  for (let x = 0; x < groundWidth; x += tileSize) {
+    add([
+      sprite('tiles1', { frame: t1Index(2, 2) }), // Use same sprite as top layer
+      pos(x, characterGroundY),
+      anchor('topleft'),
+      layer('game'),
+      z(1),
+      scale(2.0),
+      'ground'
     ])
   }
   
@@ -464,23 +490,24 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
     }
   })
   
-  // Random decorative elements - positioned 1 tile above ground
+  // RENDER DECORATIVE ITEMS AFTER ALL GROUND BLOCKS TO ENSURE THEY APPEAR ON TOP
+  // Random decorative elements - positioned ABOVE the entire ground structure
   const decorations = [
     // Palms
-    { type: 'palm', x: 400, y: characterGroundY },
-    { type: 'palm', x: 1200, y: characterGroundY },
-    { type: 'palm', x: 2000, y: characterGroundY },
+    { type: 'palm', x: 400, y: groundTopY - (5* tileSize) },
+    { type: 'palm', x: 1200, y: groundTopY - (5 * tileSize) },
+    { type: 'palm', x: 2000, y: groundTopY - (5 * tileSize) },
     
     // Trees
-    { type: 'tree', x: 800, y: characterGroundY },
-    { type: 'tree', x: 1600, y: characterGroundY },
-    { type: 'tree', x: 2400, y: characterGroundY },
+    { type: 'tree', x: 800, y: groundTopY - (3 * tileSize) },
+    { type: 'tree', x: 1600, y: groundTopY - (3 * tileSize) },
+    { type: 'tree', x: 2400, y: groundTopY - (3 * tileSize) },
     
     // Mushrooms
-    { type: 'mushroom', x: 600, y: characterGroundY },
-    { type: 'mushroom', x: 1000, y: characterGroundY },
-    { type: 'mushroom', x: 1800, y: characterGroundY },
-    { type: 'mushroom', x: 2200, y: characterGroundY },
+    { type: 'mushroom', x: 600, y: groundTopY - (0.5 * tileSize) },
+    { type: 'mushroom', x: 1000, y: groundTopY - (0.5 * tileSize) },
+    { type: 'mushroom', x: 1800, y: groundTopY - (0.5 * tileSize) },
+    { type: 'mushroom', x: 2200, y: groundTopY - (0.5 * tileSize) },
   ]
   
   decorations.forEach(dec => {
@@ -499,11 +526,11 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
   
   // Random question marks (scaled like blocks) - positioned above ground
   const questionMarkPositions = [
-    { x: 500, y: characterGroundY - tileSize },
-    { x: 1500, y: characterGroundY - tileSize },
-    { x: 2500, y: characterGroundY - tileSize },
-    { x: 900, y: characterGroundY - (3 * tileSize) },
-    { x: 1900, y: characterGroundY - (3 * tileSize) },
+    { x: 500, y: characterGroundY - (2 * tileSize) },
+    { x: 1500, y: characterGroundY - (2 * tileSize) },
+    { x: 2500, y: characterGroundY - (2 * tileSize) },
+    { x: 900, y: characterGroundY - (4 * tileSize) },
+    { x: 1900, y: characterGroundY - (4 * tileSize) },
   ]
   
   questionMarkPositions.forEach(qm => {
@@ -512,14 +539,14 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
       pos(qm.x, qm.y),
       anchor('topleft'),
       layer('game'),
-      z(2),
+      z(4), // Higher z-index to appear above everything
       scale(2.0), // Same scale as blocks
     ])
   })
   
   // Create door at the end of the level - position it correctly
   const doorX = 3000
-  const doorY = groundTopY - (4 * tileSize) // 4 tiles above ground surface - higher position
+  const doorY = groundTopY - (8 * tileSize) // 3 tiles above ground surface
   spawnDoor(ctx, doorX, doorY, 2.0)
   
   console.log('[Level3] Dynamic responsive sand theme applied')
@@ -531,13 +558,13 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
     tileSize,
     platformPositions,
     characterGroundY,
-    doorY: groundTopY - (4 * tileSize) // Door position 4 tiles above ground
+    doorY: groundTopY - (3 * tileSize) // Door position 3 tiles above ground
   }
 }
 
 // Door functions - SIMPLE AND WORKING
 export function spawnDoor(ctx: KaplayCtx, x: number, y: number, scaleFactor: number = 2.0) {
-  const { add, sprite, pos, anchor, layer, z, scale, area, body } = ctx
+  const { add, sprite, pos, anchor, layer, z, scale } = ctx
   
   const door = add([
     sprite('door', { frame: 0 }),
@@ -546,12 +573,10 @@ export function spawnDoor(ctx: KaplayCtx, x: number, y: number, scaleFactor: num
     layer('game'),
     z(2),
     scale(scaleFactor),
-    ...(area ? [area()] : []),
-    ...(body ? [body({isStatic: true})] : []),
     'goal'
   ])
   
-  console.log('[Door] Created door at', x, y)
+  console.log('[Door] Created door at', x, y, 'using proximity detection')
   
   return door
 }

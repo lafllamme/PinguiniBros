@@ -90,6 +90,11 @@ const startGame = async () => {
     
     // Store screen dimensions in Pinia store
     game.setScreenDimensions(BASE_W.value, BASE_H.value)
+    
+    // Calculate level grid information - ensure BASE_H is defined
+    if (BASE_H.value && BASE_H.value > 0) {
+      game.calculateLevelGrid(BASE_H.value)
+    }
 
     // Get KAPLAY functions
     const {
@@ -203,33 +208,35 @@ const startGame = async () => {
           // Catalog: constrain to visible height area
           spawnTiles1CatalogShowcase({ add, sprite, pos, anchor, layer, z, text, color, scale }, 820, 80, 20, 30, 80, 15, 25)
         } catch {}
-      } else {
+            } else {
+        // Update Level3 positions BEFORE GameScene initialization
+        if (level === 3 && game.levelGrid) {
+          const { characterGroundY, tileSize } = game.levelGrid
+          
+          // Override Level3 positions to use dynamic ground
+          Level3.playerStart.y = characterGroundY
+          Level3.enemies.forEach(enemy => {
+            enemy.y = characterGroundY
+          })
+          Level3.coins.forEach(coin => {
+            // Position coins above ground
+            coin.y = characterGroundY - tileSize
+          })
+          
+          console.log(`[Level3] Updated positions BEFORE GameScene: playerY=${characterGroundY}, tileSize=${tileSize}`)
+        }
+        
         const chosen = level >= 3 ? Level3 : (level >= 2 ? Level2 : Level1)
         const gs = new GameScene(chosen)
         gs.init()
         
-                // Add sand theme for Level 3
+        // Add sand theme for Level 3
         if (level === 3) {
           const levelData = spawnLevel3SandTheme({ add, sprite, pos, anchor, layer, z, scale })
           
           // Add collision for sand blocks using dynamic positions - OPTIMIZED
           const { groundBottomY, groundTopY, tileSize, platformPositions, characterGroundY, doorY } = levelData
           const groundWidth = 3200
-          
-          // Update Level3 positions for player and enemies to be on character ground
-          if (level === 3) {
-            // Override Level3 positions to use dynamic ground
-            Level3.playerStart.y = characterGroundY
-            Level3.enemies.forEach(enemy => {
-              enemy.y = characterGroundY
-            })
-            Level3.coins.forEach(coin => {
-              // Position coins above ground
-              coin.y = characterGroundY - tileSize
-            })
-            
-            console.log(`[Level3] Updated positions: playerY=${characterGroundY}, groundBottomY=${groundBottomY}, groundTopY=${groundTopY}`)
-          }
           
           // Ground collision - use fewer, larger collision boxes
           const groundHeight = 5 * tileSize // 5 rows total
@@ -243,6 +250,20 @@ const startGame = async () => {
             z(1),
             'ground'
           ])
+          
+          // Character ground collision - invisible platform at character level
+          add([
+            rect(groundWidth, tileSize),
+            pos(0, characterGroundY),
+            area(),
+            body({isStatic: true}),
+            opacity(0), // invisible collision
+            layer('game'),
+            z(1),
+            'ground'
+          ])
+          
+
           
           // Platform collision - use single rectangles per platform
           platformPositions.forEach(platform => {
@@ -1098,41 +1119,53 @@ const startGame = async () => {
       // Level 3 door animation and completion
       if (level === 3) {
         let doorAnimationStarted = false
+        let doorAnimationCompleted = false
         
         onUpdate(() => {
           const door = get('goal')[0]
           const player = get('player')[0]
           
           if (door && player && !doorAnimationStarted) {
+            // Check proximity (200 pixels)
             const distance = Math.abs(player.pos.x - door.pos.x) + Math.abs(player.pos.y - door.pos.y)
-            if (distance < 50) { // Close enough to trigger
+            if (distance < 200) {
               doorAnimationStarted = true
-              console.log('[Door] Player touched door, starting animation')
+              console.log('[Door] Player near door (distance:', distance, '), starting animation')
               
               // Animate door opening
               let frame = 0
               const animate = () => {
-                if (frame <= 7) {
+                if (frame <= 7 && !doorAnimationCompleted) {
                   door.frame = frame
                   frame++
                   setTimeout(animate, 150)
-                } else {
-                  console.log('[Door] Animation completed, ending level')
-                  // End level
-                  door.unuse('goal')
-                  door.use('levelComplete')
+                } else if (frame > 7 && !doorAnimationCompleted) {
+                  doorAnimationCompleted = true
+                  console.log('[Door] Animation completed, door ready for collision')
                 }
               }
               animate()
             }
           }
           
-          // Check for level completion
-          const completedDoor = get('levelComplete')[0]
-          if (completedDoor) {
-            console.log('[Door] Level completion detected')
-            saveCookie.value = { score: game.score, lives, lastLevel: level }
-            go('win')
+          // Check for collision with animated door
+          if (doorAnimationCompleted && player) {
+            const distance = Math.abs(player.pos.x - door.pos.x) + Math.abs(player.pos.y - door.pos.y)
+            if (distance < 50) { // Close collision
+              console.log('[Door] Player collided with animated door, ending level in 2 seconds')
+              door.unuse('goal')
+              door.use('levelComplete')
+              
+              // Wait 2 seconds then end level
+              setTimeout(() => {
+                console.log('[Door] Level completion timeout reached')
+                saveCookie.value = { score: game.score, lives, lastLevel: level }
+                go('win')
+              }, 2000)
+              
+              // Prevent multiple triggers
+              doorAnimationCompleted = false
+            }
           }
         })
       }

@@ -41,10 +41,11 @@ import { useCookie } from '#app'
 import { GameScene } from '@/assets/scenes/GameScene'
 import { Level1 } from '@/assets/levels/level_1'
 import { Level2 } from '@/assets/levels/level_2'
+import { Level3 } from '@/assets/levels/level_3'
 import { onScoreChanged, initScore } from '@/utils/coinSystem'
 import { initAssetLoader, loadAllAssets } from '../utils/AssetLoader'
 import { spawnTiles1Board, spawnTiles1Showcase, spawnTiles1Picker, spawnTiles1RowsSeparated } from '@/utils/Tiles1Demo'
-import { spawnTiles1CatalogShowcase } from '@/utils/Tiles1Catalog'
+import { spawnTiles1CatalogShowcase, spawnLevel3SandTheme } from '@/utils/Tiles1Catalog'
 import kaplay from 'kaplay'
 // VueUse
 import {useWindowSize, useElementSize, useDocumentVisibility} from '@vueuse/core'
@@ -162,8 +163,8 @@ const startGame = async () => {
 
     // Create main game scene using extracted GameScene
     scene('game', ({level = 1, lives = 3} = {}) => {
-      // Load phase background for this level
-      loadPhaseBackground(level)
+          // Load phase background for this level - always use phase1
+    loadPhaseBackground(1)
       
       // Create tiled background to cover full width
       // Try to get the actual background sprite width, fallback to 1536 for new phase1.png
@@ -200,9 +201,67 @@ const startGame = async () => {
           spawnTiles1CatalogShowcase({ add, sprite, pos, anchor, layer, z, text, color, scale }, 820, 80, 20, 30, 80, 15, 25)
         } catch {}
       } else {
-        const chosen = level >= 2 ? Level2 : Level1
+        const chosen = level >= 3 ? Level3 : (level >= 2 ? Level2 : Level1)
         const gs = new GameScene(chosen)
         gs.init()
+        
+        // Add sand theme for Level 3
+        if (level === 3) {
+          spawnLevel3SandTheme({ add, sprite, pos, anchor, layer, z, scale })
+          
+          // Add collision for sand blocks
+          const groundY = 550
+          const groundWidth = 3200
+          const tileSize = 16 * 2.0 // 2x scaling
+          
+          // Ground collision
+          for (let x = 0; x < groundWidth; x += tileSize) {
+            add([
+              rect(tileSize, tileSize),
+              pos(x, groundY),
+              area(),
+              body({isStatic: true}),
+              opacity(0), // invisible collision
+              layer('game'),
+              z(1),
+              'ground'
+            ])
+            
+            add([
+              rect(tileSize, tileSize),
+              pos(x, groundY - tileSize),
+              area(),
+              body({isStatic: true}),
+              opacity(0), // invisible collision
+              layer('game'),
+              z(1),
+              'ground'
+            ])
+          }
+          
+          // Platform collision
+          const platforms = [
+            { x: 300, y: 450, w: 100 },
+            { x: 700, y: 380, w: 100 },
+            { x: 1100, y: 320, w: 100 },
+            { x: 1450, y: 300, w: 120 }
+          ]
+          
+          for (const platform of platforms) {
+            for (let i = 0; i < platform.w; i += tileSize) {
+              add([
+                rect(tileSize, tileSize),
+                pos(platform.x + i, platform.y),
+                area(),
+                body({isStatic: true}),
+                opacity(0), // invisible collision
+                layer('game'),
+                z(1),
+                'ground'
+              ])
+            }
+          }
+        }
       }
 
       // Add custom properties to player
@@ -257,68 +316,27 @@ const startGame = async () => {
       // Player Health UI is created and managed inside GameScene.createPlayerUI()
 
       // Create ground across the entire level width
-      const worldWidth = level === 0 ? Math.max(50000, BASE_W.value * 10) : (level >= 2 ? Level2.width : Level1.width)
-      for (let x = 0; x < worldWidth; x += 200) {
-        add([
-          rect(200, 50),
-          pos(x, 550),
-          area(),
-          body({isStatic: true}),
-          color(139, 69, 19),
-          layer('game'),
-          z(1),
-          'ground',
-          // Make ground transparent for debug level
-          ...(level === 0 ? [opacity(0)] : [])
-        ])
+      const worldWidth = level === 0 ? Math.max(50000, BASE_W.value * 10) : (level >= 3 ? Level3.width : (level >= 2 ? Level2.width : Level1.width))
+      
+      // Only create brown ground for non-sand levels (0, 1, 2)
+      if (level !== 3) {
+        for (let x = 0; x < worldWidth; x += 200) {
+          add([
+            rect(200, 50),
+            pos(x, 550),
+            area(),
+            body({isStatic: true}),
+            color(139, 69, 19),
+            layer('game'),
+            z(1),
+            'ground',
+            // Make ground transparent for debug level
+            ...(level === 0 ? [opacity(0)] : [])
+          ])
+        }
       }
 
-      if (level !== 0) {
-        // Grass platforms (green layer)
-        add([
-          rect(100, 20),
-          pos(300, 450),
-          area(),
-          body({isStatic: true}),
-          color(34, 139, 34),
-          layer('game'),
-          z(1),
-          'ground'
-        ])
-
-        add([
-          rect(100, 20),
-          pos(700, 380),
-          area(),
-          body({isStatic: true}),
-          color(34, 139, 34),
-          layer('game'),
-          z(1),
-          'ground'
-        ])
-
-        add([
-          rect(100, 20),
-          pos(1100, 320),
-          area(),
-          body({isStatic: true}),
-          color(34, 139, 34),
-          layer('game'),
-          z(1),
-          'ground'
-        ])
-
-        add([
-          rect(120, 20),
-          pos(1450, 300),
-          area(),
-          body({isStatic: true}),
-          color(34, 139, 34),
-          layer('game'),
-          z(1),
-          'ground'
-        ])
-      }
+      // Green platforms removed - replaced by sand platforms in Level 3
 
       // Goal at the end of the level
       add([

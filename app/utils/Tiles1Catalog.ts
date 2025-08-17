@@ -10,6 +10,8 @@ type KaplayCtx = {
   text?: (...args: any[]) => any
   color?: (...args: any[]) => any
   scale: (...args: any[]) => any
+  area?: (...args: any[]) => any
+  body?: (...args: any[]) => any
 }
 
 function placeTile(ctx: KaplayCtx, col: number, row: number, x: number, y: number) {
@@ -23,21 +25,21 @@ function placeTile(ctx: KaplayCtx, col: number, row: number, x: number, y: numbe
   ])
 }
 
-function placeRect(ctx: KaplayCtx, col: number, row: number, w: number, h: number, x: number, y: number) {
+function placeRect(ctx: KaplayCtx, col: number, row: number, w: number, h: number, x: number, y: number, scaleFactor: number = 1.0) {
   const parent = ctx.add([ctx.pos(x, y)])
   for (let dy = 0; dy < h; dy++) {
     for (let dx = 0; dx < w; dx++) {
       parent.add([
         ctx.sprite('tiles1', { frame: t1Index(col + dx, row + dy) }),
-        ctx.pos(dx * TILE1_W, dy * TILE1_H),
-        ctx.scale(1.0), // No scaling to prevent overlapping
+        ctx.pos(dx * TILE1_W * scaleFactor, dy * TILE1_H * scaleFactor),
+        ctx.scale(scaleFactor),
       ])
     }
   }
   return parent
 }
 
-function placeComposite(ctx: KaplayCtx, coords: Array<[number, number]>, x: number, y: number) {
+function placeComposite(ctx: KaplayCtx, coords: Array<[number, number]>, x: number, y: number, scaleFactor: number = 1.0) {
   // coords are (col,row)
   const minC = Math.min(...coords.map(([c]) => c))
   const minR = Math.min(...coords.map(([, r]) => r))
@@ -45,8 +47,8 @@ function placeComposite(ctx: KaplayCtx, coords: Array<[number, number]>, x: numb
   for (const [c, r] of coords) {
     parent.add([
       ctx.sprite('tiles1', { frame: t1Index(c, r) }),
-      ctx.pos((c - minC) * TILE1_W, (r - minR) * TILE1_H),
-      ctx.scale(1.0), // No scaling to prevent overlapping
+      ctx.pos((c - minC) * TILE1_W * scaleFactor, (r - minR) * TILE1_H * scaleFactor),
+      ctx.scale(scaleFactor),
     ])
   }
   return parent
@@ -283,4 +285,150 @@ export function spawnTiles1CatalogShowcase(
   }
 
   console.log(`[Tiles1Catalog] Finished placing ${placedCount} items`)
+}
+
+
+
+// ===== REUSABLE LEVEL COMPONENTS =====
+
+// Ground types
+export function spawnSandGround(ctx: KaplayCtx, startX: number, endX: number, groundY: number, scaleFactor: number = 2.0) {
+  const { add, sprite, pos, anchor, layer, z, scale } = ctx
+  
+  for (let x = startX; x < endX; x += 32 * scaleFactor) {
+    // Bottom layer: sand_block_2
+    add([
+      sprite('tiles1', { frame: t1Index(2, 1) }), // sand_block_2: [1, 2] -> t1Index(2, 1)
+      pos(x, groundY),
+      anchor('topleft'),
+      layer('game'),
+      z(1),
+      scale(scaleFactor),
+    ])
+    
+    // Top layer: sand_block_3
+    add([
+      sprite('tiles1', { frame: t1Index(2, 2) }), // sand_block_3: [2, 2] -> t1Index(2, 2)
+      pos(x, groundY - 32 * scaleFactor),
+      anchor('topleft'),
+      layer('game'),
+      z(1),
+      scale(scaleFactor),
+    ])
+  }
+}
+
+export function spawnSandGroundWithCollision(ctx: KaplayCtx, startX: number, endX: number, groundY: number, scaleFactor: number = 2.0) {
+  const { add, sprite, pos, anchor, layer, z, scale } = ctx
+  
+  // Calculate tile size after scaling
+  const tileSize = 16 * scaleFactor
+  
+  for (let x = startX; x < endX; x += tileSize) {
+    // Bottom layer: sand_block_2 (collision handled in GameCanvas.vue)
+    add([
+      sprite('tiles1', { frame: t1Index(2, 1) }), // sand_block_2: [1, 2] -> t1Index(2, 1)
+      pos(x, groundY),
+      anchor('topleft'),
+      layer('game'),
+      z(1),
+      scale(scaleFactor),
+    ])
+    
+    // Top layer: sand_block_3 (collision handled in GameCanvas.vue)
+    add([
+      sprite('tiles1', { frame: t1Index(2, 2) }), // sand_block_3: [2, 2] -> t1Index(2, 2)
+      pos(x, groundY - tileSize),
+      anchor('topleft'),
+      layer('game'),
+      z(1),
+      scale(scaleFactor),
+    ])
+  }
+}
+
+// Decorative elements
+export function spawnPalm(ctx: KaplayCtx, x: number, y: number, scaleFactor: number = 2.0) {
+  if (COMPOSITES.palm_1) {
+    placeComposite(ctx, COMPOSITES.palm_1, x, y, scaleFactor)
+  }
+}
+
+export function spawnTree(ctx: KaplayCtx, x: number, y: number, treeType: 'tree_1' | 'tree_2' | 'tree_3' = 'tree_1', scaleFactor: number = 2.0) {
+  if (COMPOSITES[treeType]) {
+    placeComposite(ctx, COMPOSITES[treeType], x, y, scaleFactor)
+  }
+}
+
+export function spawnBridge(ctx: KaplayCtx, x: number, y: number, bridgeType: 'bridge_1_rect' | 'bridge_2_rect' | 'bridge_3_rect' = 'bridge_1_rect', scaleFactor: number = 2.0) {
+  const spec = SPRITES[bridgeType]
+  if (spec && 'rect' in spec) {
+    const [row, col, w, h] = spec.rect
+    placeRect(ctx, col, row, w, h, x, y, scaleFactor)
+  }
+}
+
+export function spawnMushroom(ctx: KaplayCtx, x: number, y: number, mushroomType: string = 'shroom_big_1', scaleFactor: number = 2.0) {
+  placeByName(ctx, mushroomType, x, y)
+}
+
+export function spawnQuestionMark(ctx: KaplayCtx, x: number, y: number, questionType: string = 'sand_question', scaleFactor: number = 2.0) {
+  placeByName(ctx, questionType, x, y)
+}
+
+// Sand platforms (replacing green platforms)
+export function spawnSandPlatform(ctx: KaplayCtx, x: number, y: number, width: number, scaleFactor: number = 2.0) {
+  const { add, sprite, pos, anchor, layer, z, scale } = ctx
+  
+  // Calculate tile size after scaling
+  const tileSize = 16 * scaleFactor
+  
+  // Create sand_block_1 platform (collision handled in GameCanvas.vue)
+  for (let i = 0; i < width; i += tileSize) {
+    add([
+      sprite('tiles1', { frame: t1Index(2, 0) }), // sand_block_1: [0, 2] -> t1Index(2, 0)
+      pos(x + i, y),
+      anchor('topleft'),
+      layer('game'),
+      z(1),
+      scale(scaleFactor),
+    ])
+  }
+}
+
+// Level presets
+export function spawnLevel3SandTheme(ctx: KaplayCtx) {
+  const groundY = 550
+  const groundWidth = 3200
+  
+  // Ground with collision
+  spawnSandGroundWithCollision(ctx, 0, groundWidth, groundY, 2.0)
+  
+  // Sand platforms (replacing green platforms)
+  spawnSandPlatform(ctx, 300, 450, 100, 2.0)
+  spawnSandPlatform(ctx, 700, 380, 100, 2.0)
+  spawnSandPlatform(ctx, 1100, 320, 100, 2.0)
+  spawnSandPlatform(ctx, 1450, 300, 120, 2.0)
+  
+  // Decorative elements
+  spawnPalm(ctx, 400, groundY - 96, 2.0)
+  spawnPalm(ctx, 1200, groundY - 96, 2.0)
+  spawnPalm(ctx, 2000, groundY - 96, 2.0)
+  
+  spawnTree(ctx, 800, groundY - 96, 'tree_1', 2.0)
+  spawnTree(ctx, 1600, groundY - 96, 'tree_3', 2.0)
+  spawnTree(ctx, 2400, groundY - 96, 'tree_1', 2.0)
+  
+  spawnBridge(ctx, 1400, groundY - 64, 'bridge_1_rect', 2.0)
+  
+  spawnMushroom(ctx, 600, groundY - 64, 'shroom_big_1')
+  spawnMushroom(ctx, 1000, groundY - 64, 'shroom_small_2')
+  spawnMushroom(ctx, 1800, groundY - 64, 'shroom_big_3')
+  spawnMushroom(ctx, 2200, groundY - 64, 'shroom_small_1')
+  
+  spawnQuestionMark(ctx, 500, groundY - 80, 'sand_question')
+  spawnQuestionMark(ctx, 1500, groundY - 80, 'sand_question')
+  spawnQuestionMark(ctx, 2500, groundY - 80, 'sand_question')
+  
+  console.log('[Level3] Sand theme applied with collision and sand platforms')
 }

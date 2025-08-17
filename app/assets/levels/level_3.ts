@@ -1,4 +1,4 @@
-import type { EnemyStats } from '@/app/assets/characters/Enemy'
+import type { EnemyStats } from '@/assets/characters/Enemy'
 
 export interface LevelDef {
   width: number
@@ -13,6 +13,7 @@ export const Level3: LevelDef = {
   width: 3200,
   gravity: 1600,
   platforms: [
+    // Sand platforms instead of green ones
     { x: 300, y: 500, w: 140, h: 20 },
     { x: 700, y: 460, w: 120, h: 20 },
     { x: 1000, y: 420, w: 140, h: 20 },

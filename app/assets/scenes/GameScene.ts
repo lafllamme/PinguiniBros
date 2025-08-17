@@ -1,5 +1,6 @@
 import { useGameStore } from '@/stores/game'
 import { Level1, type LevelDef } from '@/assets/levels/level_1'
+import { Level3 } from '@/assets/levels/level_3'
 import { clonePlayer } from '@/assets/characters/Enemy'
 import { initCoinSystem, loadCoinAssets, spawnCoinsRandom, onScoreChanged, playLobbyMusic } from '@/utils/coinSystem'
 
@@ -176,6 +177,9 @@ export class GameScene {
   }
 
   private createPlatforms() {
+    // Skip green platforms for Level 3 (sand theme)
+    if (this.level.width === 3200) return // Level 3 has width 3200
+    
     for (const plt of this.level.platforms) {
       add([rect(plt.w, plt.h), pos(plt.x, plt.y), area(), body({ isStatic: true }), color(34, 139, 34), layer('game'), z(1)])
     }

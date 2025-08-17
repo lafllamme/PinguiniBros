@@ -1105,9 +1105,9 @@ const startGame = async () => {
 
       // Win condition
       pl0?.onCollide('goal', () => {
-        // For Level 3, wait for door animation to complete
+        // For Level 3, use proximity-based completion instead of collision
         if (level === 3) {
-          // Door will trigger 'goalReached' event after animation
+          // Door uses proximity detection, not collision
           return
         }
         
@@ -1119,52 +1119,51 @@ const startGame = async () => {
       // Level 3 door animation and completion
       if (level === 3) {
         let doorAnimationStarted = false
-        let doorAnimationCompleted = false
+        let doorAnimationLooping = false
+        let levelCompleted = false
         
         onUpdate(() => {
           const door = get('goal')[0]
           const player = get('player')[0]
           
-          if (door && player && !doorAnimationStarted) {
-            // Check proximity (200 pixels)
+          if (door && player && !levelCompleted) {
+            // Check proximity (400 pixels)
             const distance = Math.abs(player.pos.x - door.pos.x) + Math.abs(player.pos.y - door.pos.y)
-            if (distance < 200) {
+            
+            // Start animation when player is near (increased range for better feel)
+            if (distance < 700 && !doorAnimationStarted) {
               doorAnimationStarted = true
-              console.log('[Door] Player near door (distance:', distance, '), starting animation')
+              doorAnimationLooping = true
+              console.log('[Door] Player near door (distance:', distance, '), starting looping animation')
               
-              // Animate door opening
+              // Looping animation
               let frame = 0
-              const animate = () => {
-                if (frame <= 7 && !doorAnimationCompleted) {
+              const animateLoop = () => {
+                if (doorAnimationLooping && !levelCompleted) {
                   door.frame = frame
-                  frame++
-                  setTimeout(animate, 150)
-                } else if (frame > 7 && !doorAnimationCompleted) {
-                  doorAnimationCompleted = true
-                  console.log('[Door] Animation completed, door ready for collision')
+                  frame = (frame + 1) % 8 // Loop through frames 0-7
+                  setTimeout(animateLoop, 150)
                 }
               }
-              animate()
+              animateLoop()
             }
-          }
-          
-          // Check for collision with animated door
-          if (doorAnimationCompleted && player) {
-            const distance = Math.abs(player.pos.x - door.pos.x) + Math.abs(player.pos.y - door.pos.y)
-            if (distance < 50) { // Close collision
-              console.log('[Door] Player collided with animated door, ending level in 2 seconds')
+            
+            // Level completion requires getting close (decreased range for better feel)
+            if (doorAnimationLooping && distance < 250) { // Smaller range for completion
+              console.log('[Door] Player close to animated door (distance:', distance, '), ending level')
+              levelCompleted = true
+              doorAnimationLooping = false
               door.unuse('goal')
               door.use('levelComplete')
               
-              // Wait 2 seconds then end level
-              setTimeout(() => {
-                console.log('[Door] Level completion timeout reached')
-                saveCookie.value = { score: game.score, lives, lastLevel: level }
-                go('win')
-              }, 2000)
-              
-              // Prevent multiple triggers
-              doorAnimationCompleted = false
+              // End level immediately
+              saveCookie.value = { score: game.score, lives, lastLevel: level }
+              go('win')
+            }
+            
+            // Debug: Log distance when door is animating (only when close)
+            if (doorAnimationLooping && distance < 300) {
+              console.log('[Door] Animation active, distance:', distance, 'px, levelCompleted:', levelCompleted)
             }
           }
         })
@@ -1419,3 +1418,4 @@ onMounted(() => {
 
 
 </style>
+

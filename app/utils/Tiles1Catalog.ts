@@ -545,7 +545,7 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
   })
   
   // Create door at the end of the level - position it correctly
-  const doorX = 3000
+  const doorX = 2880 // 90% of level width (3200 * 0.90 = 2880)
   const doorY = groundTopY - (8 * tileSize) // 3 tiles above ground surface
   spawnDoor(ctx, doorX, doorY, 2.0)
   

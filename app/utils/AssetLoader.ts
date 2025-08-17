@@ -107,6 +107,12 @@ export async function loadAllAssets(): Promise<void> {
     spriteLoads.push(loadSprite('win_overlay', winOverlayUrl))
   } catch {}
 
+  // Win content image
+  try {
+    const content1Url = new URL('../assets/sprites/general/overlay/content/content_1.png', import.meta.url).href
+    spriteLoads.push(loadSprite('content_1', content1Url))
+  } catch {}
+
   // Basic placeholder items
   spriteLoads.push(loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))
   spriteLoads.push(loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))

@@ -1,4 +1,4 @@
-// Pixel Art Background for Pinguini Bros
+w// Pixel Art Background for Pinguini Bros
 // This creates a beautiful landscape background matching the described image:
 // - Warm sunset sky gradient (orange/yellow)
 // - Distant mountains in orange/brown

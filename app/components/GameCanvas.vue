@@ -1185,47 +1185,47 @@ const startGame = async () => {
         scale(1.2), // Scale up slightly to cover more screen
       ])
 
-      // Epic win title
+      // Win content image
       add([
-        text('VICTORY! 🏆', {size: 64, font: 'arial'}),
-        pos(width() / 2, height() / 2 - 80),
+        sprite('content_1'),
+        pos(width() / 2, height() / 2 - 60),
         anchor('center'),
         layer('ui'),
         fixed(),
-        z(102),
-        color(255, 215, 0), // Gold color
+        z(101),
+        scale(0.5), // Slightly bigger scale
       ])
 
-      // Epic subtitle
+      // Level complete text
       add([
         text('Level Complete!', {size: 32, font: 'arial'}),
-        pos(width() / 2, height() / 2 - 20),
+        pos(width() / 2, height() / 2 + 140),
         anchor('center'),
         layer('ui'),
         fixed(),
-        z(102),
+        z(103),
         color(255, 255, 255), // White color
       ])
 
       // Instructions with epic styling
       add([
         text('Press X to continue to next level', {size: 24, font: 'arial'}),
-        pos(width() / 2, height() / 2 + 40),
+        pos(width() / 2, height() / 2 + 180),
         anchor('center'),
         layer('ui'),
         fixed(),
-        z(102),
+        z(103),
         color(255, 255, 255), // White color
       ])
 
       // Alternative controls
       add([
         text('Or press R to restart | Enter for Level Select', {size: 18, font: 'arial'}),
-        pos(width() / 2, height() / 2 + 80),
+        pos(width() / 2, height() / 2 + 220),
         anchor('center'),
         layer('ui'),
         fixed(),
-        z(102),
+        z(103),
         color(200, 200, 200), // Light gray color
       ])
 

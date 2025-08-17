@@ -45,7 +45,7 @@ import { Level3 } from '@/assets/levels/level_3'
 import { onScoreChanged, initScore } from '@/utils/coinSystem'
 import { initAssetLoader, loadAllAssets } from '../utils/AssetLoader'
 import { spawnTiles1Board, spawnTiles1Showcase, spawnTiles1Picker, spawnTiles1RowsSeparated } from '@/utils/Tiles1Demo'
-import { spawnTiles1CatalogShowcase, spawnLevel3SandTheme } from '@/utils/Tiles1Catalog'
+import { spawnTiles1CatalogShowcase, spawnLevel3SandTheme, spawnDoor } from '@/utils/Tiles1Catalog'
 import kaplay from 'kaplay'
 // VueUse
 import {useWindowSize, useElementSize, useDocumentVisibility} from '@vueuse/core'
@@ -339,15 +339,22 @@ const startGame = async () => {
       // Green platforms removed - replaced by sand platforms in Level 3
 
       // Goal at the end of the level
-      add([
-        rect(20, 120),
-        pos(worldWidth - 80, 430),
-        area(),
-        color(255, 215, 0),
-        layer('game'),
-        z(2),
-        'goal'
-      ])
+      if (level === 3) {
+        // Use animated door for Level 3 - position it after the last platform
+        const doorX = 3000 // After the last platform at 2800
+        spawnDoor({ add, sprite, pos, anchor, layer, z, scale, area, body }, doorX, 430, 2.0)
+      } else {
+        // Use yellow rectangle for other levels
+        add([
+          rect(20, 120),
+          pos(worldWidth - 80, 430),
+          area(),
+          color(255, 215, 0),
+          layer('game'),
+          z(2),
+          'goal'
+        ])
+      }
 
       // Coins along the level will be spawned via coin system below
 
@@ -1075,17 +1082,36 @@ const startGame = async () => {
         let targetX = pl.pos.x
         const half = width() / 2
         if (targetX < half) targetX = half
-        const maxX = level === 0 ? Math.max(50000, BASE_W.value * 10) : (level >= 2 ? Level2.width : Level1.width)
+        const maxX = level === 0 ? Math.max(50000, BASE_W.value * 10) : (level >= 3 ? Level3.width : (level >= 2 ? Level2.width : Level1.width))
         if (targetX > maxX - half) targetX = maxX - half
         setCamPos(targetX, height() / 2)
       })
 
       // Win condition
       pl0?.onCollide('goal', () => {
-        // Save progress on level finish
+        // For Level 3, wait for door animation to complete
+        if (level === 3) {
+          // Door will trigger 'goalReached' event after animation
+          return
+        }
+        
+        // For other levels, complete immediately
         saveCookie.value = { score: game.score, lives, lastLevel: level }
         go('win')
       })
+      
+      // Listen for door animation completion (Level 3)
+      if (level === 3) {
+        // Check for level completion tag
+        onUpdate(() => {
+          const completedDoor = get('levelComplete')[0]
+          if (completedDoor) {
+            console.log('[Door] Level completion detected')
+            saveCookie.value = { score: game.score, lives, lastLevel: level }
+            go('win')
+          }
+        })
+      }
 
       // Coin/music handled by GameScene now
     })

@@ -90,6 +90,16 @@ export async function loadAllAssets(): Promise<void> {
       sliceY: 16,
     }))
   } catch {}
+  
+  // Door: 8 frames horizontally
+  try {
+    const doorUrl = new URL('../assets/sprites/general/doors/door_1_8.png', import.meta.url).href
+    spriteLoads.push(loadSprite('door', doorUrl, {
+      sliceX: 8,
+      sliceY: 1,
+      // Door: 8 frames, no animations needed - we'll control frames manually
+    }))
+  } catch {}
 
   // Basic placeholder items
   spriteLoads.push(loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))

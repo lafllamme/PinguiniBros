@@ -432,3 +432,63 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
   
   console.log('[Level3] Sand theme applied with collision and sand platforms')
 }
+
+// Door functions
+export function spawnDoor(ctx: KaplayCtx, x: number, y: number, scaleFactor: number = 2.0) {
+  const { add, sprite, pos, anchor, layer, z, scale, area, body } = ctx
+  
+  const door = add([
+    sprite('door', { frame: 0 }), // Start with closed door (frame 0)
+    pos(x, y),
+    anchor('topleft'),
+    layer('game'),
+    z(2),
+    scale(scaleFactor),
+    ...(area ? [area()] : []),
+    ...(body ? [body({isStatic: true})] : []),
+    'goal'
+  ])
+  
+  let hasOpened = false
+  let currentFrame = 0
+  let animationInterval: any = null
+  let loopCount = 0
+  const totalLoops = 3 // Animation läuft 3 mal durch
+  
+  // Play open animation when player touches
+  door.onCollide('player', () => {
+    if (!hasOpened) {
+      hasOpened = true
+      console.log('[Door] Starting looping animation (3 cycles)')
+      
+      // Animate through all 8 frames, multiple times
+      animationInterval = setInterval(() => {
+        currentFrame++
+        
+        if (currentFrame > 7) {
+          // Reset to frame 0 and increment loop count
+          currentFrame = 0
+          loopCount++
+          console.log(`[Door] Completed loop ${loopCount}/${totalLoops}`)
+        }
+        
+        door.frame = currentFrame
+        
+        // After 3 complete loops, end the animation
+        if (loopCount >= totalLoops && currentFrame >= 7) {
+          clearInterval(animationInterval)
+          console.log('[Door] Animation completed, ending level')
+          
+          // End level after animation
+          setTimeout(() => {
+            // Trigger level completion by removing goal tag and adding a completion flag
+            door.unuse('goal')
+            door.use('levelComplete')
+          }, 1000) // 1 second delay to show final frame
+        }
+      }, 150) // 150ms per frame = 1.2 seconds per loop, 3.6 seconds total
+    }
+  })
+  
+  return door
+}

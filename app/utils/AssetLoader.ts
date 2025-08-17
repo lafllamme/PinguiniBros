@@ -106,7 +106,7 @@ export async function loadAllAssets(): Promise<void> {
 
   // Lobby music
   try {
-    soundLoads.push(loadSound('lobby', sound('../assets/music/lobby_1.ogg')))
+    soundLoads.push(loadSound('lobby', sound('../assets/music/lobby_1.wav')))
   } catch {}
 
   await Promise.all([...spriteLoads, ...soundLoads])

@@ -91,7 +91,7 @@ function notifyScore() {
 // Load sprites and sounds used by coins (and lobby music)
 export async function loadCoinAssets() {
   const coinUrl = new URL('../assets/sprites/items/coin.png', import.meta.url).href
-  const lobbyUrl = new URL('../assets/music/lobby_1.ogg', import.meta.url).href
+  const lobbyUrl = new URL('../assets/music/lobby_1.wav', import.meta.url).href
   const coinWavUrl = new URL('../assets/sounds/items/coin.wav', import.meta.url).href
 
   // Animated coin: 10 frames @ 12 FPS, loop

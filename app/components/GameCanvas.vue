@@ -87,6 +87,9 @@ const startGame = async () => {
       scale: scaleFactor,
       global: true,
     })
+    
+    // Store screen dimensions in Pinia store
+    game.setScreenDimensions(BASE_W.value, BASE_H.value)
 
     // Get KAPLAY functions
     const {
@@ -205,31 +208,48 @@ const startGame = async () => {
         const gs = new GameScene(chosen)
         gs.init()
         
-        // Add sand theme for Level 3
+                // Add sand theme for Level 3
         if (level === 3) {
-          spawnLevel3SandTheme({ add, sprite, pos, anchor, layer, z, scale })
+          const levelData = spawnLevel3SandTheme({ add, sprite, pos, anchor, layer, z, scale })
           
-          // Add collision for sand blocks
-          const groundY = 550
+          // Add collision for sand blocks using dynamic positions - OPTIMIZED
+          const { groundBottomY, groundTopY, tileSize, platformPositions, characterGroundY, doorY } = levelData
           const groundWidth = 3200
-          const tileSize = 16 * 2.0 // 2x scaling
           
-          // Ground collision
-          for (let x = 0; x < groundWidth; x += tileSize) {
-            add([
-              rect(tileSize, tileSize),
-              pos(x, groundY),
-              area(),
-              body({isStatic: true}),
-              opacity(0), // invisible collision
-              layer('game'),
-              z(1),
-              'ground'
-            ])
+          // Update Level3 positions for player and enemies to be on character ground
+          if (level === 3) {
+            // Override Level3 positions to use dynamic ground
+            Level3.playerStart.y = characterGroundY
+            Level3.enemies.forEach(enemy => {
+              enemy.y = characterGroundY
+            })
+            Level3.coins.forEach(coin => {
+              // Position coins above ground
+              coin.y = characterGroundY - tileSize
+            })
             
+            console.log(`[Level3] Updated positions: playerY=${characterGroundY}, groundBottomY=${groundBottomY}, groundTopY=${groundTopY}`)
+          }
+          
+          // Ground collision - use fewer, larger collision boxes
+          const groundHeight = 5 * tileSize // 5 rows total
+          add([
+            rect(groundWidth, groundHeight),
+            pos(0, groundBottomY),
+            area(),
+            body({isStatic: true}),
+            opacity(0), // invisible collision
+            layer('game'),
+            z(1),
+            'ground'
+          ])
+          
+          // Platform collision - use single rectangles per platform
+          platformPositions.forEach(platform => {
+            const platformY = groundTopY - (platform.height * tileSize)
             add([
-              rect(tileSize, tileSize),
-              pos(x, groundY - tileSize),
+              rect(100, tileSize), // 100px wide, 1 tile high
+              pos(platform.x, platformY),
               area(),
               body({isStatic: true}),
               opacity(0), // invisible collision
@@ -237,30 +257,7 @@ const startGame = async () => {
               z(1),
               'ground'
             ])
-          }
-          
-          // Platform collision
-          const platforms = [
-            { x: 300, y: 450, w: 100 },
-            { x: 700, y: 380, w: 100 },
-            { x: 1100, y: 320, w: 100 },
-            { x: 1450, y: 300, w: 120 }
-          ]
-          
-          for (const platform of platforms) {
-            for (let i = 0; i < platform.w; i += tileSize) {
-              add([
-                rect(tileSize, tileSize),
-                pos(platform.x + i, platform.y),
-                area(),
-                body({isStatic: true}),
-                opacity(0), // invisible collision
-                layer('game'),
-                z(1),
-                'ground'
-              ])
-            }
-          }
+          })
         }
       }
 
@@ -340,9 +337,7 @@ const startGame = async () => {
 
       // Goal at the end of the level
       if (level === 3) {
-        // Use animated door for Level 3 - position it after the last platform
-        const doorX = 3000 // After the last platform at 2800
-        spawnDoor({ add, sprite, pos, anchor, layer, z, scale, area, body }, doorX, 430, 2.0)
+        // Door is created in spawnLevel3SandTheme
       } else {
         // Use yellow rectangle for other levels
         add([

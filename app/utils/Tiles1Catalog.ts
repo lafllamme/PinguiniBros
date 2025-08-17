@@ -1,4 +1,5 @@
 import { TILE1_W, TILE1_H, TILE1_COLS, TILE1_ROWS, t1Index } from './Tiles1Atlas'
+import { useGameStore } from '@/stores/game'
 
 type KaplayCtx = {
   add: (...args: any[]) => any
@@ -398,39 +399,139 @@ export function spawnSandPlatform(ctx: KaplayCtx, x: number, y: number, width: n
 
 // Level presets
 export function spawnLevel3SandTheme(ctx: KaplayCtx) {
-  const groundY = 550
+  const { add, sprite, pos, anchor, layer, z, scale } = ctx
+  
+  // Dynamic responsive ground positioning - get from Pinia store
+  const game = useGameStore()
+  const screenHeight = game.screenHeight
+  const tileSize = 16 * 2.0 // 2x scaling = 32px per tile
   const groundWidth = 3200
   
-  // Ground with collision
-  spawnSandGroundWithCollision(ctx, 0, groundWidth, groundY, 2.0)
+  // Calculate ground position: start from bottom, build up
+  const groundBottomY = screenHeight - (4 * tileSize) // 4 rows of sand_block_2 at bottom
+  const groundTopY = groundBottomY - (1 * tileSize) // 1 row of sand_block_3 on top
+  const characterGroundY = groundTopY - tileSize // 1 tile above ground for characters
   
-  // Sand platforms (replacing green platforms)
-  spawnSandPlatform(ctx, 300, 450, 100, 2.0)
-  spawnSandPlatform(ctx, 700, 380, 100, 2.0)
-  spawnSandPlatform(ctx, 1100, 320, 100, 2.0)
-  spawnSandPlatform(ctx, 1450, 300, 120, 2.0)
+  console.log(`[Level3] Building ground: bottom=${groundBottomY}, top=${groundTopY}, tileSize=${tileSize}`)
   
-  // Decorative elements
-  spawnPalm(ctx, 400, groundY - 96, 2.0)
-  spawnPalm(ctx, 1200, groundY - 96, 2.0)
-  spawnPalm(ctx, 2000, groundY - 96, 2.0)
+  // Build ground layer by layer (like a cake)
+  // Layer 1-4: sand_block_2 (base)
+  for (let row = 0; row < 4; row++) {
+    for (let x = 0; x < groundWidth; x += tileSize) {
+      add([
+        sprite('tiles1', { frame: t1Index(2, 1) }), // sand_block_2
+        pos(x, groundBottomY + (row * tileSize)),
+        anchor('topleft'),
+        layer('game'),
+        z(1),
+        scale(2.0),
+      ])
+    }
+  }
   
-  spawnTree(ctx, 800, groundY - 96, 'tree_1', 2.0)
-  spawnTree(ctx, 1600, groundY - 96, 'tree_3', 2.0)
-  spawnTree(ctx, 2400, groundY - 96, 'tree_1', 2.0)
+  // Layer 5: sand_block_3 (top layer)
+  for (let x = 0; x < groundWidth; x += tileSize) {
+    add([
+      sprite('tiles1', { frame: t1Index(2, 2) }), // sand_block_3
+      pos(x, groundTopY),
+      anchor('topleft'),
+      layer('game'),
+      z(1),
+      scale(2.0),
+    ])
+  }
   
-  spawnBridge(ctx, 1400, groundY - 64, 'bridge_1_rect', 2.0)
+  // Platforms using sand_block_1 (positioned above ground)
+  const platformPositions = [
+    { x: 300, height: 3 }, // 3 tiles above ground
+    { x: 700, height: 5 }, // 5 tiles above ground
+    { x: 1100, height: 7 }, // 7 tiles above ground
+    { x: 1450, height: 8 }, // 8 tiles above ground
+  ]
   
-  spawnMushroom(ctx, 600, groundY - 64, 'shroom_big_1')
-  spawnMushroom(ctx, 1000, groundY - 64, 'shroom_small_2')
-  spawnMushroom(ctx, 1800, groundY - 64, 'shroom_big_3')
-  spawnMushroom(ctx, 2200, groundY - 64, 'shroom_small_1')
+  platformPositions.forEach(platform => {
+    const platformY = groundTopY - (platform.height * tileSize)
+    for (let i = 0; i < 100; i += tileSize) { // 100px wide platforms
+      add([
+        sprite('tiles1', { frame: t1Index(2, 0) }), // sand_block_1
+        pos(platform.x + i, platformY),
+        anchor('topleft'),
+        layer('game'),
+        z(1),
+        scale(2.0),
+      ])
+    }
+  })
   
-  spawnQuestionMark(ctx, 500, groundY - 80, 'sand_question')
-  spawnQuestionMark(ctx, 1500, groundY - 80, 'sand_question')
-  spawnQuestionMark(ctx, 2500, groundY - 80, 'sand_question')
+  // Random decorative elements - positioned 1 tile above ground
+  const decorations = [
+    // Palms
+    { type: 'palm', x: 400, y: characterGroundY },
+    { type: 'palm', x: 1200, y: characterGroundY },
+    { type: 'palm', x: 2000, y: characterGroundY },
+    
+    // Trees
+    { type: 'tree', x: 800, y: characterGroundY },
+    { type: 'tree', x: 1600, y: characterGroundY },
+    { type: 'tree', x: 2400, y: characterGroundY },
+    
+    // Mushrooms
+    { type: 'mushroom', x: 600, y: characterGroundY },
+    { type: 'mushroom', x: 1000, y: characterGroundY },
+    { type: 'mushroom', x: 1800, y: characterGroundY },
+    { type: 'mushroom', x: 2200, y: characterGroundY },
+  ]
   
-  console.log('[Level3] Sand theme applied with collision and sand platforms')
+  decorations.forEach(dec => {
+    switch (dec.type) {
+      case 'palm':
+        spawnPalm(ctx, dec.x, dec.y, 2.0)
+        break
+      case 'tree':
+        spawnTree(ctx, dec.x, dec.y, 'tree_1', 2.0)
+        break
+      case 'mushroom':
+        spawnMushroom(ctx, dec.x, dec.y, 'shroom_big_1')
+        break
+    }
+  })
+  
+  // Random question marks (scaled like blocks) - positioned above ground
+  const questionMarkPositions = [
+    { x: 500, y: characterGroundY - tileSize },
+    { x: 1500, y: characterGroundY - tileSize },
+    { x: 2500, y: characterGroundY - tileSize },
+    { x: 900, y: characterGroundY - (3 * tileSize) },
+    { x: 1900, y: characterGroundY - (3 * tileSize) },
+  ]
+  
+  questionMarkPositions.forEach(qm => {
+    add([
+      sprite('tiles1', { frame: t1Index(2, 3) }), // sand_question
+      pos(qm.x, qm.y),
+      anchor('topleft'),
+      layer('game'),
+      z(2),
+      scale(2.0), // Same scale as blocks
+    ])
+  })
+  
+  // Create door at the end of the level
+  const doorX = 3000
+  const doorY = characterGroundY - tileSize
+  spawnDoor(ctx, doorX, doorY, 2.0)
+  
+  console.log('[Level3] Dynamic responsive sand theme applied')
+  
+  // Return ground positions for collision setup
+  return {
+    groundBottomY,
+    groundTopY,
+    tileSize,
+    platformPositions,
+    characterGroundY,
+    doorY: characterGroundY - tileSize // Door position 1 tile above character ground
+  }
 }
 
 // Door functions
@@ -455,40 +556,44 @@ export function spawnDoor(ctx: KaplayCtx, x: number, y: number, scaleFactor: num
   let loopCount = 0
   const totalLoops = 3 // Animation läuft 3 mal durch
   
-  // Play open animation when player touches
-  door.onCollide('player', () => {
-    if (!hasOpened) {
-      hasOpened = true
-      console.log('[Door] Starting looping animation (3 cycles)')
-      
-      // Animate through all 8 frames, multiple times
-      animationInterval = setInterval(() => {
-        currentFrame++
+  // Play open animation when player touches - use Kaplay's collision system
+  if (door.onCollide) {
+    door.onCollide('player', () => {
+      if (!hasOpened) {
+        hasOpened = true
+        console.log('[Door] Starting looping animation (3 cycles)')
         
-        if (currentFrame > 7) {
-          // Reset to frame 0 and increment loop count
-          currentFrame = 0
-          loopCount++
-          console.log(`[Door] Completed loop ${loopCount}/${totalLoops}`)
-        }
-        
-        door.frame = currentFrame
-        
-        // After 3 complete loops, end the animation
-        if (loopCount >= totalLoops && currentFrame >= 7) {
-          clearInterval(animationInterval)
-          console.log('[Door] Animation completed, ending level')
+        // Animate through all 8 frames, multiple times
+        animationInterval = setInterval(() => {
+          currentFrame++
           
-          // End level after animation
-          setTimeout(() => {
-            // Trigger level completion by removing goal tag and adding a completion flag
-            door.unuse('goal')
-            door.use('levelComplete')
-          }, 1000) // 1 second delay to show final frame
-        }
-      }, 150) // 150ms per frame = 1.2 seconds per loop, 3.6 seconds total
-    }
-  })
+          if (currentFrame > 7) {
+            // Reset to frame 0 and increment loop count
+            currentFrame = 0
+            loopCount++
+            console.log(`[Door] Completed loop ${loopCount}/${totalLoops}`)
+          }
+          
+          door.frame = currentFrame
+          
+          // After 3 complete loops, end the animation
+          if (loopCount >= totalLoops && currentFrame >= 7) {
+            clearInterval(animationInterval)
+            console.log('[Door] Animation completed, ending level')
+            
+            // End level after animation
+            setTimeout(() => {
+              // Trigger level completion by removing goal tag and adding a completion flag
+              door.unuse('goal')
+              door.use('levelComplete')
+            }, 1000) // 1 second delay to show final frame
+          }
+        }, 150) // 150ms per frame = 1.2 seconds per loop, 3.6 seconds total
+      }
+    })
+  } else {
+    console.warn('[Door] onCollide not available, door animation disabled')
+  }
   
   return door
 }

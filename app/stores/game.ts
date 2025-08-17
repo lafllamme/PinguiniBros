@@ -10,6 +10,10 @@ export const useGameStore = defineStore('game', () => {
   const player = reactive<PlayerStats>(clonePlayer())
   const lastDamageAt = ref(0)
   const lastHealAt = ref(0)
+  
+  // Dynamic screen dimensions
+  const screenWidth = ref(800)
+  const screenHeight = ref(600)
 
   // derived
   const hpPercent = computed(() => player.hp / player.maxHp)
@@ -65,6 +69,11 @@ export const useGameStore = defineStore('game', () => {
   function respawnPlayer() {
     player.hp = player.maxHp
   }
+  
+  function setScreenDimensions(width: number, height: number) {
+    screenWidth.value = width
+    screenHeight.value = height
+  }
 
   return {
     // state
@@ -74,6 +83,8 @@ export const useGameStore = defineStore('game', () => {
     player,
     lastDamageAt,
     lastHealAt,
+    screenWidth,
+    screenHeight,
     // derived
     hpPercent,
     hpBucket,
@@ -88,6 +99,7 @@ export const useGameStore = defineStore('game', () => {
     damagePlayer,
     healPlayer,
     respawnPlayer,
+    setScreenDimensions,
     isRegenReady,
     regenCooldownMs,
   }

@@ -113,6 +113,18 @@ export async function loadAllAssets(): Promise<void> {
     spriteLoads.push(loadSprite('content_1', content1Url))
   } catch {}
 
+  // Game over content image
+  try {
+    const content2Url = new URL('../assets/sprites/general/overlay/content/content_2.png', import.meta.url).href
+    spriteLoads.push(loadSprite('content_2', content2Url))
+  } catch {}
+
+  // Game over background
+  try {
+    const looseUrl = new URL('../assets/sprites/general/overlay/loose/loose.png', import.meta.url).href
+    spriteLoads.push(loadSprite('loose', looseUrl))
+  } catch {}
+
   // Basic placeholder items
   spriteLoads.push(loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))
   spriteLoads.push(loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))

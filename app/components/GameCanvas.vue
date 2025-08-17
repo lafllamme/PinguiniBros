@@ -1249,22 +1249,35 @@ const startGame = async () => {
 
     // Game over scene
     scene('gameOver', ({ level = 1 } = {}) => {
+      // Game over background
       add([
-        text('Game Over! 💀', {size: 32}),
-        pos(width() / 2, height() / 2 - 20),
+        sprite('loose'),
+        pos(width() / 2, height() / 2),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(100),
+        scale(1.2), // Scale up to cover full screen
+      ])
+
+      // Game over content image
+      add([
+        sprite('content_2'),
+        pos(width() / 2, height() / 2 - 60),
         anchor('center'),
         layer('ui'),
         fixed(),
         z(101),
+        scale(0.3), // Smaller scale for content image
       ])
 
       add([
-        text('Press Enter to retry level, or M for Menu', {size: 16}),
-        pos(width() / 2, height() / 2 + 20),
+        text('Press Enter to retry level, or M for Menu', {size: 24}),
+        pos(width() / 2, height() / 2 + 160),
         anchor('center'),
         layer('ui'),
         fixed(),
-        z(101),
+        z(103),
       ])
 
       onKeyPress('enter', () => go('game', { level, lives: 3 }))

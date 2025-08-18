@@ -184,7 +184,7 @@ const startGame = async () => {
       console.log('🎵 Switching from start music to lobby music...')
       
       try {
-        audioManager.playMusic('lobby', { volume: 0.6 })
+        audioManager.playMusic('lobby', { volume: 0.45 })
       } catch (error) {
         console.warn('❌ Failed to start lobby music:', error)
       }
@@ -778,8 +778,8 @@ const startGame = async () => {
         } else {
           // Resume current music if needed
           if (audioManager.isMusicPlaying()) {
-            // Replay the current music
-            audioManager.playMusic('lobby', { volume: 0.6 })
+                      // Replay the current music
+          audioManager.playMusic('lobby', { volume: 0.45 })
           }
         }
         if (pauseSoundBtn) pauseSoundBtn.text = soundMuted ? 'Sound: Off' : 'Sound: On'
@@ -1526,7 +1526,7 @@ onUnmounted(() => {
       if (v === 'visible') {
         // Resume music if it was playing
         if (audioManager.isMusicPlaying()) {
-          audioManager.playMusic('lobby', { volume: 0.6 })
+          audioManager.playMusic('lobby', { volume: 0.45 })
         }
       } else {
         // Pause music when tab is not visible

@@ -1046,12 +1046,15 @@ const startGame = async () => {
             enemyHpManager.damageEnemy(1)
             setSkAnim('hit')
             
+            // Update HP bar to reflect the damage
+            enemyHpManager.updateHPBar()
+            
             if (enemyHpManager.isEnemyDead()) {
               console.log(`💀 Skeleton died!`)
               sk.isDead = true
               setSkAnim('dead')
               sk.vel.x = 0; sk.vel.y = 0
-              enemyHpManager.destroyHPBar()
+              // HP bar will be automatically hidden by updateHPBar when health reaches 0
               setTimeout(() => destroy(sk), 1600)
             }
           })

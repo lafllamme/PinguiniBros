@@ -200,8 +200,7 @@ export class EnemyManager {
         skeleton.vel.x = 0
         skeleton.vel.y = 0
         
-              // Destroy HP bar
-      hpManager.destroyHPBar()
+        // HP bar will be automatically hidden by updateHPBar when health reaches 0
         this.enemies.delete(skeleton)
         
         // Destroy skeleton after animation

@@ -205,7 +205,7 @@ export class GameScene {
       if (enemyHpManager.isEnemyDead()) {
         sk.isDead = true
         sk.play('dead')
-        enemyHpManager.destroyHPBar()
+        // HP bar is already hidden by damageEnemy method
         setTimeout(() => destroy(sk), 1600)
       }
     })

@@ -193,6 +193,14 @@ export class HPManager {
       w = currentHp <= 0 ? 0 : Math.floor(this.config.width! * pct)
     }
 
+    // Auto-hide/show HP bar based on HP
+    if (currentHp <= 0) {
+      this.hideHPBar()
+      return // Don't update anything else if HP is 0
+    } else {
+      this.showHPBar()
+    }
+
     // Determine color bucket - adjusted for better visual feedback
     // For enemies with low HP (like 3 HP), we want more granular color changes
     let state: 'g' | 'y' | 'r'
@@ -303,6 +311,76 @@ export class HPManager {
   }
 
   /**
+   * Hide HP bar (when entity dies)
+   */
+  hideHPBar(): void {
+    if (this.hpBar) {
+      // Try different methods to hide the HP bar
+      if (this.hpBar.hidden !== undefined) {
+        this.hpBar.hidden = true
+      } else if (this.hpBar.pos !== undefined) {
+        // Move off-screen if hidden property doesn't exist
+        this.hpBar.pos.x = -1000
+        this.hpBar.pos.y = -1000
+      }
+    }
+    if (this.hpBarBg) {
+      if (this.hpBarBg.hidden !== undefined) {
+        this.hpBarBg.hidden = true
+      } else if (this.hpBarBg.pos !== undefined) {
+        // Move off-screen if hidden property doesn't exist
+        this.hpBarBg.pos.x = -1000
+        this.hpBarBg.pos.y = -1000
+      }
+    }
+    consola.debug(`[HP] HP bar hidden for ${this.isEnemy ? 'enemy' : 'player'}`)
+  }
+
+  /**
+   * Show HP bar (when entity respawns)
+   */
+  showHPBar(): void {
+    if (this.hpBar && this.target) {
+      if (this.hpBar.hidden !== undefined) {
+        this.hpBar.hidden = false
+      } else if (this.hpBar.pos !== undefined) {
+        // Restore position
+        this.hpBar.pos.x = this.target.pos.x - this.config.width! / 2
+        this.hpBar.pos.y = this.target.pos.y + this.config.offsetY!
+      }
+    }
+    if (this.hpBarBg && this.target) {
+      if (this.hpBarBg.hidden !== undefined) {
+        this.hpBarBg.hidden = false
+      } else if (this.hpBarBg.pos !== undefined) {
+        // Restore position
+        this.hpBarBg.pos.x = this.target.pos.x
+        this.hpBarBg.pos.y = this.target.pos.y + this.config.offsetY!
+      }
+    }
+    consola.debug(`[HP] HP bar shown for ${this.isEnemy ? 'enemy' : 'player'}`)
+  }
+
+  /**
+   * Check if HP bar is currently visible
+   */
+  isHPBarVisible(): boolean {
+    if (!this.hpBar || !this.hpBarBg) return false
+    
+    // Check if hidden property is used
+    if (this.hpBar.hidden !== undefined) {
+      return !this.hpBar.hidden && !this.hpBarBg.hidden
+    }
+    
+    // Check if moved off-screen
+    if (this.hpBar.pos && this.hpBarBg.pos) {
+      return this.hpBar.pos.x > -500 && this.hpBarBg.pos.x > -500
+    }
+    
+    return true
+  }
+
+  /**
    * Handle player death
    */
   handlePlayerDeath(): void {
@@ -312,6 +390,8 @@ export class HPManager {
 
     consola.warn(`💀 Player died! Triggering death animation...`)
     game.setPlayerDead(true)
+
+    // HP bar will be automatically hidden by updateHPBar when HP reaches 0
 
     // Play explosion sound
     // Note: This will be handled by the game scene
@@ -327,6 +407,8 @@ export class HPManager {
     const game = this.getGame()
     game.respawnPlayer()
     this.regenTimer = 0
+    
+    // HP bar will be automatically shown by updateHPBar when HP is restored
     this.updateHPBar()
   }
 
@@ -395,6 +477,8 @@ export class HPManager {
     this.target.health = Math.max(0, this.target.health - amount)
     consola.debug(`[DEBUG] After damage: health=${this.target.health}, maxHealth=${this.target.maxHealth}`)
     this.updateHPBar()
+    
+    // HP bar will be automatically hidden by updateHPBar when health reaches 0
     
     return true
   }

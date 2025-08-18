@@ -26,6 +26,9 @@ export class HPManager {
   private target: any = null // For enemy HP bars
   private isEnemy: boolean = false
   private destroyFn: Function | null = null // Store destroy function
+  private colorFn: Function | null = null // Store color function
+  private lastLoggedHp: number = -1
+  private lastLoggedState: 'g' | 'y' | 'r' | null = null
 
   
   // Default configuration
@@ -127,6 +130,7 @@ export class HPManager {
     // Store target reference and destroy function
     this.target = target
     this.destroyFn = destroy
+    this.colorFn = color
 
     // Background
     this.hpBarBg = add([
@@ -157,7 +161,7 @@ export class HPManager {
   /**
    * Update HP bar display
    */
-  updateHPBar(): void {
+  public updateHPBar(): void {
     if (!this.hpBar || !this.hpBarBg) return
 
     let pct: number
@@ -171,6 +175,7 @@ export class HPManager {
       maxHp = this.target.maxHealth || 1
       pct = Math.max(0, Math.min(1, currentHp / maxHp))
       w = currentHp <= 0 ? 0 : Math.floor(this.config.width! * pct)
+      console.log(`[DEBUG] Enemy HP check: health=${this.target.health}, maxHealth=${this.target.maxHealth}, currentHp=${currentHp}, maxHp=${maxHp}, pct=${(pct*100).toFixed(1)}%`)
     } else {
       // Player HP bar
       const game = this.getGame()
@@ -180,38 +185,71 @@ export class HPManager {
       w = currentHp <= 0 ? 0 : Math.floor(this.config.width! * pct)
     }
 
-    // Determine color bucket
-    const state: 'g' | 'y' | 'r' = pct > 0.6 ? 'g' : pct > 0.3 ? 'y' : 'r'
-    
-    // Get color based on state
-    let colorArray: number[]
-    switch (state) {
-      case 'g':
-        colorArray = this.HP_COLORS.green
-        break
-      case 'y':
-        colorArray = this.HP_COLORS.yellow
-        break
-      case 'r':
-        colorArray = this.HP_COLORS.red
-        break
-      default:
-        colorArray = this.HP_COLORS.green
+    // Determine color bucket - adjusted for better visual feedback
+    // For enemies with low HP (like 3 HP), we want more granular color changes
+    let state: 'g' | 'y' | 'r'
+    if (this.isEnemy) {
+      // Enemy color thresholds: Green > 66%, Yellow 33-66%, Red < 33%
+      state = pct > 0.66 ? 'g' : pct > 0.33 ? 'y' : 'r'
+    } else {
+      // Player color thresholds: Green > 60%, Yellow 30-60%, Red < 30%
+      state = pct > 0.6 ? 'g' : pct > 0.3 ? 'y' : 'r'
     }
-
-    // Update color if changed
+    
+    // Only update color if state changed (performance optimization)
     if (state !== this.hpColorState) {
-      // In Kaplay, we need to set the color as an array
-      this.hpBar.color = colorArray
+      console.log(`[DEBUG] Color state changing from ${this.hpColorState} to ${state}`)
+      this.updateHPBarColor(state)
       this.hpColorState = state
-      console.log(`[HP] Color changed to: ${state} (${colorArray.join(', ')})`)
     }
 
     // Update width
     this.hpBar.width = w
 
-    const entityType = this.isEnemy ? 'Enemy' : 'Player'
-    console.log(`[HP] ${entityType} Bar update: hp=${currentHp}/${maxHp}, pct=${(pct*100).toFixed(1)}%, width=${w}/${this.config.width}, state=${state}`)
+    // Only log when HP actually changes for debugging
+    if (this.isEnemy && (currentHp !== this.lastLoggedHp || state !== this.lastLoggedState)) {
+      console.log(`[HP] Enemy: ${currentHp}/${maxHp} (${(pct*100).toFixed(1)}%) - ${state}`)
+      this.lastLoggedHp = currentHp
+      this.lastLoggedState = state
+    }
+  }
+
+  /**
+   * Update HP bar color based on state
+   */
+  private updateHPBarColor(state: 'g' | 'y' | 'r'): void {
+    if (!this.hpBar || !this.colorFn) return
+
+    let r: number, g: number, b: number
+    
+    switch (state) {
+      case 'g':
+        r = this.HP_COLORS.green[0]!
+        g = this.HP_COLORS.green[1]!
+        b = this.HP_COLORS.green[2]!
+        break
+      case 'y':
+        r = this.HP_COLORS.yellow[0]!
+        g = this.HP_COLORS.yellow[1]!
+        b = this.HP_COLORS.yellow[2]!
+        break
+      case 'r':
+        r = this.HP_COLORS.red[0]!
+        g = this.HP_COLORS.red[1]!
+        b = this.HP_COLORS.red[2]!
+        break
+      default:
+        r = this.HP_COLORS.green[0]!
+        g = this.HP_COLORS.green[1]!
+        b = this.HP_COLORS.green[2]!
+    }
+
+    // Apply color using Kaplay's use() method to replace the color component
+    this.hpBar.use(this.colorFn(r, g, b))
+    console.log(`[HP] Color changed to: ${state} (${r}, ${g}, ${b})`)
+    
+    // Debug: Check if color was actually applied
+    console.log(`[DEBUG] HP bar color after change:`, this.hpBar.color)
   }
 
   /**
@@ -347,6 +385,7 @@ export class HPManager {
     console.log(`⚔️ Enemy taking damage: ${this.target.health} -> ${this.target.health - amount}`)
     
     this.target.health = Math.max(0, this.target.health - amount)
+    console.log(`[DEBUG] After damage: health=${this.target.health}, maxHealth=${this.target.maxHealth}`)
     this.updateHPBar()
     
     return true

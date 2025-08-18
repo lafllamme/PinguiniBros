@@ -537,7 +537,7 @@ const startGame = async () => {
         const dir = p.facingRight ? 1 : -1
         const hb = add([
           rect(36, 24),
-          pos(p.pos.x + dir * 28, p.pos.y - 4),
+          pos(p.pos.x + dir * 40, p.pos.y - 4), // Move further away from player
           anchor('center'),
           area(),
           layer('game'),
@@ -546,8 +546,15 @@ const startGame = async () => {
           'playerAttack',
           lifespan(0.25, { fade: 0 })
         ])
+        
+        // Ignore collisions with the player to prevent self-damage
+        hb.onCollide('player', () => {
+          // Do nothing - ignore player collisions
+        })
         // damage enemies on collide
         hb.onCollide('skeleton', (sk: any) => {
+          console.log(`[DEBUG] Player attack hit skeleton! Skeleton health: ${sk.health}/${sk.maxHealth}`)
+          // Trigger the playerAttack event on the skeleton
           sk.trigger?.('playerAttack')
         })
         // full anim time: 6 frames @ 12 fps ≈ 500ms
@@ -938,8 +945,9 @@ const startGame = async () => {
           onUpdate(() => {
             if (sk.isDead) return
             
-            // Update HP bar position
+            // Update HP bar position and display
             enemyHpManager.updateHPBarPosition(sk)
+            enemyHpManager.updateHPBar()
 
             // Dynamically tighten collider while in air
             const airborne = Math.abs(sk.vel.y) > 1
@@ -1030,6 +1038,7 @@ const startGame = async () => {
 
           // When hit by player attack (placeholder tag)
           sk.onCollide('playerAttack', () => {
+            console.log(`[DEBUG] Skeleton received playerAttack collision! Current health: ${sk.health}/${sk.maxHealth}`)
             if (sk.isDead) return
             
             // Use HPManager to handle enemy damage

@@ -160,8 +160,9 @@ export class GameScene {
     onUpdate(() => {
       if (sk.isDead) return
       
-      // Update HP bar position
+      // Update HP bar position and display
       enemyHpManager.updateHPBarPosition(sk)
+      enemyHpManager.updateHPBar()
 
       // chase / patrol
       const player = get('player')[0]

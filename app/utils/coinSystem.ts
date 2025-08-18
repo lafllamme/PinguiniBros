@@ -121,8 +121,137 @@ export async function loadCoinAssets() {
 
 // Optional: start lobby music (loop)
 export function playLobbyMusic(volume: number = 0.5) {
-  const h = K.play('lobby', { loop: true, volume })
-  return h
+  if (!K) {
+    console.warn('Kaplay context not available for lobby music')
+    return null
+  }
+  try {
+    const h = K.play('lobby', { loop: true, volume })
+    return h
+  } catch (error) {
+    console.warn('Failed to play lobby music:', error)
+    return null
+  }
+}
+
+// Fade in music over time
+export function fadeInMusic(musicHandle: any, targetVolume: number = 0.6, duration: number = 1000) {
+  if (!musicHandle || !K) return
+  
+  const steps = 20
+  const stepDuration = duration / steps
+  const volumeStep = targetVolume / steps
+  
+  let currentStep = 0
+  const fadeInterval = setInterval(() => {
+    currentStep++
+    const newVolume = Math.min(targetVolume, volumeStep * currentStep)
+    
+    try {
+      if (musicHandle && typeof musicHandle.volume !== 'undefined') {
+        musicHandle.volume = newVolume
+      }
+    } catch (error) {
+      console.warn('Failed to adjust music volume:', error)
+    }
+    
+    if (currentStep >= steps || newVolume >= targetVolume) {
+      clearInterval(fadeInterval)
+    }
+  }, stepDuration)
+}
+
+// Force stop all music
+export function stopAllMusic() {
+  if (!K) return
+  
+  try {
+    console.log('🎵 stopAllMusic: Trying to stop all sounds...')
+    // Try to stop all playing sounds
+    if (typeof K.stopAll === 'function') {
+      console.log('🎵 stopAllMusic: Calling K.stopAll()')
+      K.stopAll()
+    }
+    // Alternative: try to stop specific sounds
+    if (typeof K.stop === 'function') {
+      console.log('🎵 stopAllMusic: Stopping specific sounds')
+      K.stop('start')
+      K.stop('lobby')
+    }
+    // Try to access the audio context
+    if (K.audio && typeof K.audio.stopAll === 'function') {
+      console.log('🎵 stopAllMusic: Calling K.audio.stopAll()')
+      K.audio.stopAll()
+    }
+    // Try to access the sound manager
+    if (K.sound && typeof K.sound.stopAll === 'function') {
+      console.log('🎵 stopAllMusic: Calling K.sound.stopAll()')
+      K.sound.stopAll()
+    }
+  } catch (error) {
+    console.warn('❌ stopAllMusic failed:', error)
+  }
+}
+
+// Start music for menu/selection screens
+export function playStartMusic(volume: number = 0.5) {
+  if (!K) {
+    console.warn('Kaplay context not available for start music')
+    return null
+  }
+  try {
+    const h = K.play('start', { loop: true, volume })
+    return h
+  } catch (error) {
+    console.warn('Failed to play start music:', error)
+    return null
+  }
+}
+
+// Fade out music over time
+export function fadeOutMusic(musicHandle: any, duration: number = 1000) {
+  if (!musicHandle || !K) return
+  
+  const startVolume = musicHandle.volume || 0.6
+  const steps = 20
+  const stepDuration = duration / steps
+  const volumeStep = startVolume / steps
+  
+  let currentStep = 0
+  const fadeInterval = setInterval(() => {
+    currentStep++
+    const newVolume = Math.max(0, startVolume - (volumeStep * currentStep))
+    
+    try {
+      if (musicHandle && typeof musicHandle.volume !== 'undefined') {
+        musicHandle.volume = newVolume
+      }
+    } catch (error) {
+      console.warn('Failed to adjust music volume:', error)
+    }
+    
+    if (currentStep >= steps || newVolume <= 0) {
+      clearInterval(fadeInterval)
+      try {
+        // Try multiple ways to stop the music
+        if (musicHandle && typeof musicHandle.pause === 'function') {
+          musicHandle.pause()
+        }
+        if (musicHandle && typeof musicHandle.stop === 'function') {
+          musicHandle.stop()
+        }
+        // Force stop by setting volume to 0 and pausing
+        if (musicHandle && typeof musicHandle.volume !== 'undefined') {
+          musicHandle.volume = 0
+        }
+        if (musicHandle && typeof musicHandle.pause === 'function') {
+          musicHandle.pause()
+        }
+      } catch (error) {
+        console.warn('Failed to stop music after fade:', error)
+      }
+    }
+  }, stepDuration)
 }
 
 type Vec2Like = { x: number; y: number }

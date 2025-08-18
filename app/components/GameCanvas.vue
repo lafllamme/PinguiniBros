@@ -42,7 +42,7 @@ import { GameScene } from '@/assets/scenes/GameScene'
 import { Level1 } from '@/assets/levels/level_1'
 import { Level2 } from '@/assets/levels/level_2'
 import { Level3 } from '@/assets/levels/level_3'
-import { onScoreChanged, initScore } from '@/utils/coinSystem'
+import { onScoreChanged, initScore, playStartMusic, playLobbyMusic, initCoinSystem, fadeOutMusic, stopAllMusic } from '@/utils/coinSystem'
 import { initAssetLoader, loadAllAssets } from '../utils/AssetLoader'
 import { spawnTiles1Board, spawnTiles1Showcase, spawnTiles1Picker, spawnTiles1RowsSeparated } from '@/utils/Tiles1Demo'
 import { spawnTiles1CatalogShowcase, spawnLevel3SandTheme, spawnDoor } from '@/utils/Tiles1Catalog'
@@ -55,6 +55,7 @@ const containerEl = ref<HTMLElement>()
 const gameStarted = ref(false)
 let gameInstance: any = null
 let lobbyMusic: any = null
+let currentMusic: any = null // Track current playing music
 const game = useGameStore()
 
 // Responsive sizing using VueUse
@@ -138,6 +139,9 @@ const startGame = async () => {
     initAssetLoader(gameInstance)
     await loadAllAssets()
 
+    // Initialize coin system with Kaplay context
+    initCoinSystem(gameInstance)
+
     // Global Phase System - Level-based background selection
     const loadPhaseBackground = (level: number) => {
       // Levels 1-2 use phase1, level 3+ uses phase2
@@ -171,8 +175,111 @@ const startGame = async () => {
 
     // Create main game scene using extracted GameScene
     scene('game', ({level = 1, lives = 3} = {}) => {
-          // Load phase background for this level - always use phase1
-    loadPhaseBackground(1)
+      // Simple music switch: stop start music, play lobby music
+      console.log('🎵 Stopping start music and starting lobby music...')
+      
+      // Properly stop the current music using the handle
+      console.log('🎵 Current music handle:', currentMusic)
+      console.log('🎵 Lobby music handle:', lobbyMusic)
+      
+      if (currentMusic && typeof currentMusic.stop === 'function') {
+        console.log('🎵 Stopping current music with handle.stop()...')
+        try { 
+          currentMusic.stop() 
+          console.log('✅ Current music stopped successfully')
+        } catch (e) { 
+          console.log('❌ Failed to stop current music with handle:', e) 
+        }
+      } else {
+        console.log('❌ Current music handle has no stop() method:', currentMusic)
+      }
+      
+      // Force stop all sounds
+      try {
+        console.log('🎵 Calling stopAll()...')
+        if (gameInstance && typeof gameInstance.stopAll === 'function') {
+          gameInstance.stopAll()
+        }
+      } catch (error) {
+        console.warn('❌ stopAll failed:', error)
+      }
+      
+      // Try to stop specific sounds
+      try {
+        console.log('🎵 Trying to stop specific sounds...')
+        if (gameInstance && typeof gameInstance.stop === 'function') {
+          gameInstance.stop('start')
+          gameInstance.stop('lobby')
+        }
+      } catch (error) {
+        console.warn('❌ Specific stop failed:', error)
+      }
+      
+      // Nuclear option: Stop ALL audio on the page
+      try {
+        console.log('🎵 NUCLEAR OPTION: Stopping ALL audio on the page...')
+        
+        // Stop all HTML5 audio elements
+        const audioElements = document.querySelectorAll('audio')
+        audioElements.forEach(audio => {
+          console.log('🎵 Stopping audio element:', audio)
+          audio.pause()
+          audio.currentTime = 0
+        })
+        
+        // Stop all Web Audio API sources
+        if (window.AudioContext) {
+          console.log('🎵 AudioContext available, trying to suspend...')
+          try {
+            // Try to suspend any active audio context
+            const contexts = (window as any).__audioContexts || []
+            contexts.forEach((ctx: any) => {
+              if (ctx && typeof ctx.suspend === 'function') {
+                ctx.suspend()
+              }
+            })
+          } catch (e) {
+            console.log('❌ AudioContext suspend failed:', e)
+          }
+        }
+        
+        // Try to stop all Kaplay sounds by accessing internal state
+        if (gameInstance && gameInstance._sounds) {
+          console.log('🎵 Stopping Kaplay internal sounds...')
+          Object.keys(gameInstance._sounds).forEach(soundName => {
+            console.log('🎵 Stopping sound:', soundName)
+            try {
+              if (gameInstance._sounds[soundName] && typeof gameInstance._sounds[soundName].stop === 'function') {
+                gameInstance._sounds[soundName].stop()
+              }
+            } catch (e) {
+              console.log('❌ Failed to stop sound:', soundName, e)
+            }
+          })
+        }
+        
+      } catch (error) {
+        console.warn('❌ Nuclear audio stop failed:', error)
+      }
+      
+      // Small delay to ensure music is stopped, then start lobby music
+      setTimeout(() => {
+        console.log('🎵 Starting lobby music...')
+        
+        // Play lobby music and store the handle properly
+        try {
+          currentMusic = play('lobby', { loop: true, volume: 0.6 })
+          lobbyMusic = currentMusic
+          console.log('🎵 Lobby music handle:', currentMusic)
+        } catch (error) {
+          console.warn('❌ Failed to start lobby music:', error)
+          currentMusic = null
+          lobbyMusic = null
+        }
+      }, 100) // Reduced delay since we're using proper handles now
+
+      // Load phase background for this level - always use phase1
+      loadPhaseBackground(1)
       
       // Create tiled background to cover full width
       // Try to get the actual background sprite width, fallback to 1536 for new phase1.png
@@ -1288,45 +1395,58 @@ const startGame = async () => {
 
     // Menu scene -> Go to level select
     scene('menu', () => {
-      // Create tiled background to cover full width
-      // Try to get the actual background sprite width, fallback to 1536 for new phase1.png
-      const bgSprite = sprite('level_bg')
-      const bgWidth = bgSprite?.width || 1536 // Use actual width or fallback to new image width
-      // Create many more tiles to ensure full coverage
-      const tilesNeeded = Math.max(5, Math.ceil(BASE_W.value / bgWidth) + 3)
-      
-      // Create tiled background to cover full width
-      for (let i = 0; i < tilesNeeded; i++) {
-        add([
-          sprite('level_bg'), 
-          pos(i * bgWidth, 0), 
-          anchor('topleft'), 
-          layer('bg'), 
-          fixed()
-        ])
+      // Start game background
+      add([
+        sprite('start'),
+        pos(width() / 2, height() / 2),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(100),
+        scale(1.0), // Original size
+      ])
+
+      // Start game content image
+      add([
+        sprite('content_3'),
+        pos(width() / 2, height() / 2 - 80),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(101),
+        scale(0.5), // Adjust scale as needed
+      ])
+
+      // Flashing "PRESS ENTER TO START GAME" text
+      const flashText = add([
+        text('PRESS ENTER TO START GAME', {size: 28, font: 'monospace'}),
+        pos(width() / 2, height() / 2 + 100),
+        anchor('center'),
+        layer('ui'),
+        fixed(),
+        z(102),
+        color(255, 255, 255), // White color
+      ])
+
+      // Flashing animation
+      let flashVisible = true
+      const flashInterval = setInterval(() => {
+        flashVisible = !flashVisible
+        flashText.opacity = flashVisible ? 1 : 0.3
+      }, 800)
+
+      // Start music for menu
+      try {
+        // Play the start music and store the handle properly
+        currentMusic = play('start', { loop: true, volume: 0.6 })
+        lobbyMusic = currentMusic
+        console.log('🎵 Start music handle:', currentMusic)
+      } catch (error) {
+        console.warn('Failed to start menu music:', error)
+        currentMusic = null
+        lobbyMusic = null
       }
 
-      const title = add([
-        text('Pinguini Bros', {size: 36}),
-        pos(width() / 2, 180),
-        anchor('center'),
-        layer('ui'),
-        fixed(),
-        z(100),
-      ])
-
-      const startBtn = add([
-        text('Start', {size: 24}),
-        pos(width() / 2, 260),
-        anchor('center'),
-        area(),
-        layer('ui'),
-        fixed(),
-        z(100),
-        'startBtn'
-      ])
-
-      onClick('startBtn', () => go('levelSelect'))
       onKeyPress('enter', () => go('levelSelect'))
       onKeyPress('return', () => go('levelSelect'))
       onKeyPress('kpenter', () => go('levelSelect'))
@@ -1351,6 +1471,26 @@ const startGame = async () => {
 
     // Level select scene (mock 1..99)
     scene('levelSelect', () => {
+      // Start music for level selection
+      if (currentMusic) {
+        try { 
+          console.log('🎵 Stopping current music handle:', currentMusic)
+          currentMusic.stop() 
+        } catch (e) { 
+          console.log('❌ Failed to stop current music:', e) 
+        }
+      }
+      try {
+        // Play the start music and store the handle properly
+        currentMusic = play('start', { loop: true, volume: 0.6 })
+        lobbyMusic = currentMusic
+        console.log('🎵 Level selection music handle:', currentMusic)
+      } catch (error) {
+        console.warn('Failed to start level selection music:', error)
+        currentMusic = null
+        lobbyMusic = null
+      }
+
       // Level selection background
       add([
         sprite('selection'),
@@ -1359,7 +1499,7 @@ const startGame = async () => {
         layer('ui'),
         fixed(),
         z(100),
-        scale(1.2), // Scale up to cover full screen
+        scale(1.0), // Original size
       ])
 
       // Title with shadow effect for indie game look
@@ -1410,10 +1550,10 @@ const startGame = async () => {
         
         // Add hover effect for better UX
         btn.onHover(() => {
-          btn.color = rgb(255, 215, 0) // Gold on hover
+          btn.color = [255, 215, 0] // Gold on hover
         })
         btn.onHoverEnd(() => {
-          btn.color = rgb(255, 255, 255) // Back to white
+          btn.color = [255, 255, 255] // Back to white
         })
         
         onClick(`level-${i}`, () => go('game', {level: i}))

@@ -131,6 +131,18 @@ export async function loadAllAssets(): Promise<void> {
     spriteLoads.push(loadSprite('selection', selectionUrl))
   } catch {}
 
+  // Start game background
+  try {
+    const startUrl = new URL('../assets/sprites/general/overlay/start/start.png', import.meta.url).href
+    spriteLoads.push(loadSprite('start', startUrl))
+  } catch {}
+
+  // Start game content image
+  try {
+    const content3Url = new URL('../assets/sprites/general/overlay/content/content_3.png', import.meta.url).href
+    spriteLoads.push(loadSprite('content_3', content3Url))
+  } catch {}
+
   // Basic placeholder items
   spriteLoads.push(loadSprite('penguin', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))
   spriteLoads.push(loadSprite('ice_platform', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='))
@@ -147,6 +159,11 @@ export async function loadAllAssets(): Promise<void> {
   // Lobby music
   try {
     soundLoads.push(loadSound('lobby', sound('../assets/music/lobby_1.wav')))
+  } catch {}
+
+  // Start music
+  try {
+    soundLoads.push(loadSound('start', sound('../assets/music/start.ogg')))
   } catch {}
 
   await Promise.all([...spriteLoads, ...soundLoads])

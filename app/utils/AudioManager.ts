@@ -1,3 +1,5 @@
+import { consola } from 'consola'
+
 // Centralized Audio Manager for Kaplay
 // Handles all music and sound effects with proper handle management
 
@@ -9,13 +11,13 @@ export class AudioManager {
   // Initialize with Kaplay instance
   init(gameInstance: any) {
     this.gameInstance = gameInstance
-    console.log('🎵 AudioManager initialized with game instance')
+    consola.info('🎵 AudioManager initialized with game instance')
   }
 
   // Play music with proper handle management
   playMusic(soundName: string, options: { loop?: boolean; volume?: number } = {}) {
     if (!this.gameInstance) {
-      console.warn('🎵 AudioManager not initialized')
+      consola.warn('🎵 AudioManager not initialized')
       return null
     }
 
@@ -31,10 +33,10 @@ export class AudioManager {
       })
 
       this.currentMusic = musicHandle
-      console.log(`🎵 Started music: ${soundName}`, musicHandle)
+      consola.info(`🎵 Started music: ${soundName}`, musicHandle)
       return musicHandle
     } catch (error) {
-      console.error(`🎵 Failed to play music ${soundName}:`, error)
+      consola.error(`🎵 Failed to play music ${soundName}:`, error)
       return null
     }
   }
@@ -43,15 +45,15 @@ export class AudioManager {
   stopCurrentMusic() {
     if (this.currentMusic && typeof this.currentMusic.stop === 'function') {
       try {
-        console.log('🎵 Stopping current music:', this.currentMusic)
+        consola.info('🎵 Stopping current music:', this.currentMusic)
         this.currentMusic.stop()
         this.currentMusic = null
-        console.log('✅ Current music stopped successfully')
+        consola.info('✅ Current music stopped successfully')
       } catch (error) {
-        console.error('❌ Failed to stop current music:', error)
+        consola.error('❌ Failed to stop current music:', error)
       }
     } else if (this.currentMusic) {
-      console.log('❌ Current music handle has no stop() method:', this.currentMusic)
+      consola.warn('❌ Current music handle has no stop() method:', this.currentMusic)
       this.currentMusic = null
     }
   }
@@ -59,7 +61,7 @@ export class AudioManager {
   // Play sound effect
   playSound(soundName: string, options: { volume?: number } = {}) {
     if (!this.gameInstance) {
-      console.warn('🎵 AudioManager not initialized')
+      consola.warn('🎵 AudioManager not initialized')
       return null
     }
 
@@ -72,10 +74,10 @@ export class AudioManager {
 
       // Store sound effect handle for potential stopping
       this.soundEffects.set(soundName, soundHandle)
-      console.log(`🎵 Played sound effect: ${soundName}`, soundHandle)
+      consola.info(`🎵 Played sound effect: ${soundName}`, soundHandle)
       return soundHandle
     } catch (error) {
-      console.error(`🎵 Failed to play sound ${soundName}:`, error)
+      consola.error(`🎵 Failed to play sound ${soundName}:`, error)
       return null
     }
   }
@@ -87,16 +89,16 @@ export class AudioManager {
       try {
         soundHandle.stop()
         this.soundEffects.delete(soundName)
-        console.log(`🎵 Stopped sound effect: ${soundName}`)
+        consola.info(`🎵 Stopped sound effect: ${soundName}`)
       } catch (error) {
-        console.error(`🎵 Failed to stop sound ${soundName}:`, error)
+        consola.error(`🎵 Failed to stop sound ${soundName}:`, error)
       }
     }
   }
 
   // Stop all audio (nuclear option as fallback)
   stopAllAudio() {
-    console.log('🎵 NUCLEAR OPTION: Stopping ALL audio...')
+    consola.warn('🎵 NUCLEAR OPTION: Stopping ALL audio...')
     
     // Stop current music
     this.stopCurrentMusic()

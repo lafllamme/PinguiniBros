@@ -38,6 +38,7 @@
 <script setup lang="ts">
 import {ref, onMounted, onUnmounted, computed, shallowRef, watch} from 'vue'
 import { useCookie } from '#app'
+import { consola } from 'consola'
 import { GameScene } from '@/assets/scenes/GameScene'
 import { Level1 } from '@/assets/levels/level_1'
 import { Level2 } from '@/assets/levels/level_2'
@@ -152,7 +153,7 @@ const startGame = async () => {
       const bgUrl = new URL(`../assets/sprites/general/${phaseName}.png`, import.meta.url).href
       
       loadSprite('level_bg', bgUrl)
-      console.log(`🎨 Loading phase background: ${phaseName} for level ${level}`)
+      consola.info(`🎨 Loading phase background: ${phaseName} for level ${level}`)
     }
 
     // Load background based on current level
@@ -179,15 +180,15 @@ const startGame = async () => {
     // Create main game scene using extracted GameScene
     scene('game', ({level = 1, lives = 3} = {}) => {
       // Simple music switch: stop start music, play lobby music
-      console.log('🎵 Stopping start music and starting lobby music...')
+      consola.info('🎵 Stopping start music and starting lobby music...')
       
       // Switch to lobby music for gameplay
-      console.log('🎵 Switching from start music to lobby music...')
+      consola.info('🎵 Switching from start music to lobby music...')
       
       try {
         audioManager.playMusic('lobby', { volume: 0.45 })
       } catch (error) {
-        console.warn('❌ Failed to start lobby music:', error)
+        consola.warn('❌ Failed to start lobby music:', error)
       }
       
       // AudioManager handles the music switching automatically
@@ -202,7 +203,7 @@ const startGame = async () => {
       // Create many more tiles to ensure full coverage
       const tilesNeeded = Math.max(5, Math.ceil(BASE_W.value / bgWidth) + 3)
       
-      console.log(`🎨 Creating ${tilesNeeded} background tiles for canvas width ${BASE_W.value}px`)
+      consola.info(`🎨 Creating ${tilesNeeded} background tiles for canvas width ${BASE_W.value}px`)
       
       // Create tiled background to cover full width
       for (let i = 0; i < tilesNeeded; i++) {
@@ -244,7 +245,7 @@ const startGame = async () => {
             coin.y = characterGroundY - tileSize
           })
           
-          console.log(`[Level3] Updated positions BEFORE GameScene: playerY=${characterGroundY}, tileSize=${tileSize}`)
+          consola.debug(`[Level3] Updated positions BEFORE GameScene: playerY=${characterGroundY}, tileSize=${tileSize}`)
         }
         
         const chosen = level >= 3 ? Level3 : (level >= 2 ? Level2 : Level1)
@@ -553,7 +554,7 @@ const startGame = async () => {
         })
         // damage enemies on collide
         hb.onCollide('skeleton', (sk: any) => {
-          console.log(`[DEBUG] Player attack hit skeleton! Skeleton health: ${sk.health}/${sk.maxHealth}`)
+          consola.debug(`[DEBUG] Player attack hit skeleton! Skeleton health: ${sk.health}/${sk.maxHealth}`)
           // Trigger the playerAttack event on the skeleton
           sk.trigger?.('playerAttack')
         })
@@ -833,7 +834,7 @@ const startGame = async () => {
           
           // Wait for death animation to complete before respawning
           setTimeout(() => {
-            console.log(`🔄 Respawning player after death animation...`)
+            consola.info(`🔄 Respawning player after death animation...`)
             game.loseLife()
             lives = game.lives
             if (livesText) livesText.text = `Lives: ${lives}`
@@ -1038,7 +1039,7 @@ const startGame = async () => {
 
           // When hit by player attack (placeholder tag)
           sk.onCollide('playerAttack', () => {
-            console.log(`[DEBUG] Skeleton received playerAttack collision! Current health: ${sk.health}/${sk.maxHealth}`)
+            consola.debug(`[DEBUG] Skeleton received playerAttack collision! Current health: ${sk.health}/${sk.maxHealth}`)
             if (sk.isDead) return
             
             // Use HPManager to handle enemy damage
@@ -1062,7 +1063,7 @@ const startGame = async () => {
             const now = Date.now()
             if (now - lastCollisionTime < 500) return // Prevent rapid direction changes
             
-            console.log(`🔄 Skeleton hit wall, changing direction from ${sk.direction} to ${-sk.direction}`)
+            consola.debug(`🔄 Skeleton hit wall, changing direction from ${sk.direction} to ${-sk.direction}`)
             sk.direction = -sk.direction
             sk.flipX = sk.direction < 0
             lastCollisionTime = now
@@ -1077,7 +1078,7 @@ const startGame = async () => {
             const now = Date.now()
             if (now - lastCollisionTime < 500) return // Prevent rapid direction changes
             
-            console.log(`🔄 Skeleton hit another enemy, changing direction`)
+            consola.debug(`🔄 Skeleton hit another enemy, changing direction`)
             sk.direction = -sk.direction
             sk.flipX = sk.direction < 0
             lastCollisionTime = now
@@ -1138,16 +1139,16 @@ const startGame = async () => {
             if (distance < 700 && !doorAnimationStarted) {
               doorAnimationStarted = true
               doorAnimationLooping = true
-              console.log('[Door] Player near door (distance:', distance, '), starting looping animation')
+              consola.debug('[Door] Player near door (distance:', distance, '), starting looping animation')
               
               // Play door sound when player gets near (only once)
               if (!doorSoundPlayed) {
                 try {
                   play('door', { volume: 0.4 })
                   doorSoundPlayed = true
-                  console.log('[Door] Door sound played')
+                  consola.info('[Door] Door sound played')
                 } catch (error) {
-                  console.warn('Failed to play door sound:', error)
+                  consola.warn('Failed to play door sound:', error)
                 }
               }
               
@@ -1165,7 +1166,7 @@ const startGame = async () => {
             
             // Level completion requires getting close (decreased range for better feel)
             if (doorAnimationLooping && distance < 180) { // Smaller range for completion
-              console.log('[Door] Player close to animated door (distance:', distance, '), ending level')
+              consola.info('[Door] Player close to animated door (distance:', distance, '), ending level')
               levelCompleted = true
               doorAnimationLooping = false
               door.unuse('goal')
@@ -1178,7 +1179,7 @@ const startGame = async () => {
             
             // Debug: Log distance when door is animating (only when close)
             if (doorAnimationLooping && distance < 300) {
-              console.log('[Door] Animation active, distance:', distance, 'px, levelCompleted:', levelCompleted)
+              consola.debug('[Door] Animation active, distance:', distance, 'px, levelCompleted:', levelCompleted)
             }
           }
         })
@@ -1192,9 +1193,9 @@ const startGame = async () => {
       // Play success sound when win scene starts
       try {
         play('success', { volume: 0.6 })
-        console.log('🎵 Success sound played')
+        consola.info('🎵 Success sound played')
       } catch (error) {
-        console.warn('Failed to play success sound:', error)
+        consola.warn('Failed to play success sound:', error)
       }
 
       // Add win overlay background
@@ -1355,7 +1356,7 @@ const startGame = async () => {
       try {
         audioManager.playMusic('start', { volume: 0.6 })
       } catch (error) {
-        console.warn('Failed to start menu music:', error)
+        consola.warn('Failed to start menu music:', error)
       }
 
       onKeyPress('enter', () => go('levelSelect'))
@@ -1386,7 +1387,7 @@ const startGame = async () => {
       try {
         audioManager.playMusic('start', { volume: 0.6 })
       } catch (error) {
-        console.warn('Failed to start level selection music:', error)
+        consola.warn('Failed to start level selection music:', error)
       }
 
       // Level selection background

@@ -1,5 +1,6 @@
 import { useGameStore } from '@/stores/game'
 import { audioManager } from './AudioManager'
+import { consola } from 'consola'
 
 export interface HPBarConfig {
   width?: number
@@ -29,6 +30,8 @@ export class HPManager {
   private colorFn: Function | null = null // Store color function
   private lastLoggedHp: number = -1
   private lastLoggedState: 'g' | 'y' | 'r' | null = null
+  private lastDebugLogTime: number = 0
+  private readonly DEBUG_LOG_INTERVAL = 3000 // 3 seconds
 
   
   // Default configuration
@@ -79,7 +82,7 @@ export class HPManager {
       return false
     }
 
-    console.log(`⚔️ Applying damage: ${dmg}, Current HP: ${game.player.hp}`)
+    consola.info(`⚔️ Applying damage: ${dmg}, Current HP: ${game.player.hp}`)
     
     // Play hurt sound
     if (playSound) {
@@ -90,7 +93,7 @@ export class HPManager {
     // Update game store
     game.damagePlayer(dmg)
     
-    console.log(`💔 After damage: HP: ${game.player.hp}/${game.player.maxHp}`)
+    consola.info(`💔 After damage: HP: ${game.player.hp}/${game.player.maxHp}`)
     
     // Update HP bar
     this.updateHPBar()
@@ -113,7 +116,7 @@ export class HPManager {
       return false
     }
 
-    console.log(`💚 Healing player: +${amount}, HP: ${game.player.hp}/${game.player.maxHp}`)
+    consola.info(`💚 Healing player: +${amount}, HP: ${game.player.hp}/${game.player.maxHp}`)
     
     game.healPlayer(amount)
     this.updateHPBar()
@@ -175,7 +178,12 @@ export class HPManager {
       maxHp = this.target.maxHealth || 1
       pct = Math.max(0, Math.min(1, currentHp / maxHp))
       w = currentHp <= 0 ? 0 : Math.floor(this.config.width! * pct)
-      console.log(`[DEBUG] Enemy HP check: health=${this.target.health}, maxHealth=${this.target.maxHealth}, currentHp=${currentHp}, maxHp=${maxHp}, pct=${(pct*100).toFixed(1)}%`)
+      // Throttle debug logs to every 3 seconds
+      const now = Date.now()
+      if (now - this.lastDebugLogTime > this.DEBUG_LOG_INTERVAL) {
+        consola.debug(`[DEBUG] Enemy HP check: health=${this.target.health}, maxHealth=${this.target.maxHealth}, currentHp=${currentHp}, maxHp=${maxHp}, pct=${(pct*100).toFixed(1)}%`)
+        this.lastDebugLogTime = now
+      }
     } else {
       // Player HP bar
       const game = this.getGame()
@@ -198,7 +206,7 @@ export class HPManager {
     
     // Only update color if state changed (performance optimization)
     if (state !== this.hpColorState) {
-      console.log(`[DEBUG] Color state changing from ${this.hpColorState} to ${state}`)
+      consola.debug(`[DEBUG] Color state changing from ${this.hpColorState} to ${state}`)
       this.updateHPBarColor(state)
       this.hpColorState = state
     }
@@ -208,7 +216,7 @@ export class HPManager {
 
     // Only log when HP actually changes for debugging
     if (this.isEnemy && (currentHp !== this.lastLoggedHp || state !== this.lastLoggedState)) {
-      console.log(`[HP] Enemy: ${currentHp}/${maxHp} (${(pct*100).toFixed(1)}%) - ${state}`)
+      consola.info(`[HP] Enemy: ${currentHp}/${maxHp} (${(pct*100).toFixed(1)}%) - ${state}`)
       this.lastLoggedHp = currentHp
       this.lastLoggedState = state
     }
@@ -246,10 +254,10 @@ export class HPManager {
 
     // Apply color using Kaplay's use() method to replace the color component
     this.hpBar.use(this.colorFn(r, g, b))
-    console.log(`[HP] Color changed to: ${state} (${r}, ${g}, ${b})`)
+    consola.info(`[HP] Color changed to: ${state} (${r}, ${g}, ${b})`)
     
     // Debug: Check if color was actually applied
-    console.log(`[DEBUG] HP bar color after change:`, this.hpBar.color)
+    consola.debug(`[DEBUG] HP bar color after change:`, this.hpBar.color)
   }
 
   /**
@@ -302,7 +310,7 @@ export class HPManager {
     
     if (game.isPlayerDead) return
 
-    console.log(`💀 Player died! Triggering death animation...`)
+    consola.warn(`💀 Player died! Triggering death animation...`)
     game.setPlayerDead(true)
 
     // Play explosion sound
@@ -382,10 +390,10 @@ export class HPManager {
   damageEnemy(amount: number): boolean {
     if (!this.isEnemy || !this.target) return false
 
-    console.log(`⚔️ Enemy taking damage: ${this.target.health} -> ${this.target.health - amount}`)
+    consola.info(`⚔️ Enemy taking damage: ${this.target.health} -> ${this.target.health - amount}`)
     
     this.target.health = Math.max(0, this.target.health - amount)
-    console.log(`[DEBUG] After damage: health=${this.target.health}, maxHealth=${this.target.maxHealth}`)
+    consola.debug(`[DEBUG] After damage: health=${this.target.health}, maxHealth=${this.target.maxHealth}`)
     this.updateHPBar()
     
     return true

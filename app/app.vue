@@ -4,7 +4,7 @@ import { consola } from 'consola'
 const loadingGradient = ref('linear-gradient(90deg, #059669, #064e3b, #6d28d9)')
 
 // If we are in development mode, we set consola log level to 5
-if (import.meta.dev) {
+if (false) {
   consola.level = 5
   consola.info('Development mode enabled')
 }

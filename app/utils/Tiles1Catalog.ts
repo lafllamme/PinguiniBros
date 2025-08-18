@@ -1,5 +1,6 @@
 import { TILE1_W, TILE1_H, TILE1_COLS, TILE1_ROWS, t1Index } from './Tiles1Atlas'
 import { useGameStore } from '@/stores/game'
+import { consola } from 'consola'
 
 type KaplayCtx = {
   add: (...args: any[]) => any
@@ -426,7 +427,7 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
   const { groundBottomY, groundTopY, characterGroundY, tileSize } = game.levelGrid
   const groundWidth = 3200
   
-  console.log(`[Level3] Building ground: bottom=${groundBottomY}, top=${groundTopY}, characterGround=${characterGroundY}, tileSize=${tileSize}`)
+      consola.debug(`[Level3] Building ground: bottom=${groundBottomY}, top=${groundTopY}, characterGround=${characterGroundY}, tileSize=${tileSize}`)
   
   // Build ground layer by layer (like a cake)
   // Layer 1-4: sand_block_2 (base) - start from bottom
@@ -549,7 +550,7 @@ export function spawnLevel3SandTheme(ctx: KaplayCtx) {
   const doorY = groundTopY - (8 * tileSize) // 3 tiles above ground surface
   spawnDoor(ctx, doorX, doorY, 2.0)
   
-  console.log('[Level3] Dynamic responsive sand theme applied')
+      consola.info('[Level3] Dynamic responsive sand theme applied')
   
   // Return ground positions for collision setup
   return {
@@ -576,7 +577,7 @@ export function spawnDoor(ctx: KaplayCtx, x: number, y: number, scaleFactor: num
     'goal'
   ])
   
-  console.log('[Door] Created door at', x, y, 'using proximity detection')
+      consola.info('[Door] Created door at', x, y, 'using proximity detection')
   
   return door
 }

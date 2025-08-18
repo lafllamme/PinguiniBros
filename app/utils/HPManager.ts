@@ -6,6 +6,8 @@ export interface HPBarConfig {
   height?: number
   offsetY?: number
   zIndex?: number
+  target?: any // For enemy HP bars
+  isEnemy?: boolean // Distinguish between player and enemy HP bars
 }
 
 export interface DamageConfig {
@@ -21,6 +23,9 @@ export class HPManager {
   private hpBarBg: any = null
   private hpColorState: 'g' | 'y' | 'r' = 'g'
   private regenTimer = 0
+  private target: any = null // For enemy HP bars
+  private isEnemy: boolean = false
+  private destroyFn: Function | null = null // Store destroy function
 
   
   // Default configuration
@@ -28,13 +33,23 @@ export class HPManager {
     width: 40,
     height: 6,
     offsetY: -60,
-    zIndex: 200
+    zIndex: 200,
+    isEnemy: false
+  }
+
+  // Color constants for HP bar
+  private readonly HP_COLORS = {
+    green: [0, 255, 0],
+    yellow: [255, 255, 0], 
+    red: [255, 0, 0]
   }
 
   constructor(config?: Partial<HPBarConfig>) {
     if (config) {
       this.config = { ...this.config, ...config }
     }
+    this.isEnemy = this.config.isEnemy || false
+    this.target = this.config.target || null
   }
 
   private getGame() {
@@ -106,23 +121,29 @@ export class HPManager {
   /**
    * Create HP bar UI
    */
-  createHPBar(player: any, add: Function, rect: Function, pos: Function, anchor: Function, color: Function, layer: Function, z: Function, destroy: Function) {
-    if (!player) return
+  createHPBar(target: any, add: Function, rect: Function, pos: Function, anchor: Function, color: Function, layer: Function, z: Function, destroy: Function) {
+    if (!target) return
+
+    // Store target reference and destroy function
+    this.target = target
+    this.destroyFn = destroy
 
     // Background
     this.hpBarBg = add([
       rect(this.config.width! + 2, this.config.height! + 2),
-      pos(player.pos.x, player.pos.y + this.config.offsetY!),
+      pos(target.pos.x, target.pos.y + this.config.offsetY!),
       anchor('center'),
       color(0, 0, 0),
       layer('ui'),
       z(this.config.zIndex!),
     ])
 
-    // Foreground bar
+    // Foreground bar - use left anchor for both player and enemies for consistent shrinking
+    const barPos = pos(target.pos.x - this.config.width! / 2, target.pos.y + this.config.offsetY!)
+
     this.hpBar = add([
       rect(this.config.width!, this.config.height!),
-      pos(player.pos.x - this.config.width! / 2, player.pos.y + this.config.offsetY!),
+      barPos,
       anchor('left'),
       color(0, 255, 0),
       layer('ui'),
@@ -139,40 +160,74 @@ export class HPManager {
   updateHPBar(): void {
     if (!this.hpBar || !this.hpBarBg) return
 
-    const game = this.getGame()
-    const pct = Math.max(0, Math.min(1, game.player.hp / game.player.maxHp))
-    const w = game.player.hp <= 0 ? 0 : Math.floor(this.config.width! * pct)
+    let pct: number
+    let w: number
+    let currentHp: number
+    let maxHp: number
+
+    if (this.isEnemy && this.target) {
+      // Enemy HP bar
+      currentHp = this.target.health || 0
+      maxHp = this.target.maxHealth || 1
+      pct = Math.max(0, Math.min(1, currentHp / maxHp))
+      w = currentHp <= 0 ? 0 : Math.floor(this.config.width! * pct)
+    } else {
+      // Player HP bar
+      const game = this.getGame()
+      currentHp = game.player.hp
+      maxHp = game.player.maxHp
+      pct = Math.max(0, Math.min(1, currentHp / maxHp))
+      w = currentHp <= 0 ? 0 : Math.floor(this.config.width! * pct)
+    }
 
     // Determine color bucket
     const state: 'g' | 'y' | 'r' = pct > 0.6 ? 'g' : pct > 0.3 ? 'y' : 'r'
-    const clr = state === 'g' ? [0, 255, 0] : state === 'y' ? [255, 255, 0] : [255, 0, 0]
+    
+    // Get color based on state
+    let colorArray: number[]
+    switch (state) {
+      case 'g':
+        colorArray = this.HP_COLORS.green
+        break
+      case 'y':
+        colorArray = this.HP_COLORS.yellow
+        break
+      case 'r':
+        colorArray = this.HP_COLORS.red
+        break
+      default:
+        colorArray = this.HP_COLORS.green
+    }
 
     // Update color if changed
     if (state !== this.hpColorState) {
-      this.hpBar.color = clr
+      // In Kaplay, we need to set the color as an array
+      this.hpBar.color = colorArray
       this.hpColorState = state
+      console.log(`[HP] Color changed to: ${state} (${colorArray.join(', ')})`)
     }
 
     // Update width
     this.hpBar.width = w
 
-    console.log(`[HP] Bar update: hp=${game.player.hp}/${game.player.maxHp}, pct=${(pct*100).toFixed(1)}%, width=${w}/${this.config.width}`)
+    const entityType = this.isEnemy ? 'Enemy' : 'Player'
+    console.log(`[HP] ${entityType} Bar update: hp=${currentHp}/${maxHp}, pct=${(pct*100).toFixed(1)}%, width=${w}/${this.config.width}, state=${state}`)
   }
 
   /**
-   * Update HP bar position to follow player
+   * Update HP bar position to follow target
    */
-  updateHPBarPosition(player: any): void {
-    if (!this.hpBar || !this.hpBarBg || !player) return
+  updateHPBarPosition(target: any): void {
+    if (!this.hpBar || !this.hpBarBg || !target) return
 
-    const x = Math.round(player.pos.x)
-    const y = Math.round(player.pos.y + this.config.offsetY!)
+    const x = Math.round(target.pos.x)
+    const y = Math.round(target.pos.y + this.config.offsetY!)
 
     // Background stays centered
     this.hpBarBg.pos.x = x
     this.hpBarBg.pos.y = y
 
-    // Foreground begins at the left edge of the bg
+    // Foreground is left-anchored for both player and enemies
     this.hpBar.pos.x = x - this.config.width! / 2
     this.hpBar.pos.y = y
   }
@@ -273,13 +328,44 @@ export class HPManager {
    * Destroy HP bar UI
    */
   destroyHPBar(): void {
-    if (this.hpBar) {
-      // Note: destroy function will be provided by the game context
+    if (this.hpBar && this.destroyFn) {
+      this.destroyFn(this.hpBar)
       this.hpBar = null
     }
-    if (this.hpBarBg) {
+    if (this.hpBarBg && this.destroyFn) {
+      this.destroyFn(this.hpBarBg)
       this.hpBarBg = null
     }
+  }
+
+  /**
+   * Apply damage to enemy
+   */
+  damageEnemy(amount: number): boolean {
+    if (!this.isEnemy || !this.target) return false
+
+    console.log(`⚔️ Enemy taking damage: ${this.target.health} -> ${this.target.health - amount}`)
+    
+    this.target.health = Math.max(0, this.target.health - amount)
+    this.updateHPBar()
+    
+    return true
+  }
+
+  /**
+   * Check if enemy is dead
+   */
+  isEnemyDead(): boolean {
+    if (!this.isEnemy || !this.target) return false
+    return this.target.health <= 0
+  }
+
+  /**
+   * Get enemy HP percentage
+   */
+  getEnemyHPPercentage(): number {
+    if (!this.isEnemy || !this.target) return 0
+    return this.target.health / this.target.maxHealth
   }
 }
 

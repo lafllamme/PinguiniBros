@@ -908,61 +908,27 @@ const startGame = async () => {
             }
           }
 
-          // Small hp bar above skeleton
-          const skBg = add([
-            rect(42, 8),
-            pos(x, y - 60),
-            anchor('center'),
-            color(0, 0, 0),
-            layer('ui'),
-            z(19),
-          ])
-          let skHp = add([
-            rect(40, 6),
-            pos(x - 20, y - 60),
-            anchor('left'),
-            color(0, 255, 0),
-            layer('ui'),
-            z(20),
-          ])
-          function updateSkHp() {
-            const p = Math.max(0, Math.min(1, sk.health / sk.maxHealth))
-            const w = Math.round(40 * p)
-            
-            let newColor
-            if (p > 0.5) {
-              newColor = color(0, 255, 0) // Green
-              console.log(`🟢 Skeleton HP: ${sk.health}/${sk.maxHealth} (${(p*100).toFixed(1)}%) - Setting GREEN color`)
-            } else if (p > 0.25) {
-              newColor = color(255, 255, 0) // Yellow
-              console.log(`🟡 Skeleton HP: ${sk.health}/${sk.maxHealth} (${(p*100).toFixed(1)}%) - Setting YELLOW color`)
-            } else {
-              newColor = color(255, 0, 0) // Red
-              console.log(`🔴 Skeleton HP: ${sk.health}/${sk.maxHealth} (${(p*100).toFixed(1)}%) - Setting RED color`)
-            }
-            
-            // Destroy old HP bar and create new one
-            destroy(skHp)
-            
-            const uiX = Math.round(sk.pos.x)
-            const uiY = Math.round(sk.pos.y - 60)
-            
-            // Create new HP bar with correct width and color
-            const newSkHp = add([
-              rect(w, 6),
-              pos(uiX - 20, uiY),
-              anchor('left'),
-              newColor,
-              layer('ui'),
-              z(20),
-            ])
-            
-            // Update the reference
-            skHp = newSkHp
-            
-            console.log(`📊 Skeleton HP Bar - Width: ${w}/40, Color: ${newColor}, Percentage: ${(p*100).toFixed(1)}%`)
-          }
-          updateSkHp()
+          // Create HP bar using unified HPManager
+          const enemyHpManager = new HPManager({
+            width: 40,
+            height: 6,
+            offsetY: -60,
+            zIndex: 20,
+            target: sk,
+            isEnemy: true
+          })
+
+          const hpBarElements = enemyHpManager.createHPBar(
+            sk,
+            add,
+            rect,
+            pos,
+            anchor,
+            color,
+            layer,
+            z,
+            destroy
+          )
 
           // Desired colliders for ground vs air
           const groundBox = { w: 24, h: 48, oy: -22 }
@@ -971,13 +937,9 @@ const startGame = async () => {
 
           onUpdate(() => {
             if (sk.isDead) return
-            // Follow hp bar
-            const uiX = Math.round(sk.pos.x)
-            const uiY = Math.round(sk.pos.y - 60)
-            skBg.pos.x = uiX; skBg.pos.y = uiY
-            if (skHp) {
-              skHp.pos.x = uiX - 20; skHp.pos.y = uiY
-            }
+            
+            // Update HP bar position
+            enemyHpManager.updateHPBarPosition(sk)
 
             // Dynamically tighten collider while in air
             const airborne = Math.abs(sk.vel.y) > 1
@@ -1069,16 +1031,17 @@ const startGame = async () => {
           // When hit by player attack (placeholder tag)
           sk.onCollide('playerAttack', () => {
             if (sk.isDead) return
-            console.log(`⚔️ Skeleton taking damage: ${sk.health} -> ${sk.health - 1}`)
-            sk.health -= 1
-            updateSkHp()
+            
+            // Use HPManager to handle enemy damage
+            enemyHpManager.damageEnemy(1)
             setSkAnim('hit')
-            if (sk.health <= 0) {
+            
+            if (enemyHpManager.isEnemyDead()) {
               console.log(`💀 Skeleton died!`)
               sk.isDead = true
               setSkAnim('dead')
               sk.vel.x = 0; sk.vel.y = 0
-              destroy(skBg); destroy(skHp)
+              enemyHpManager.destroyHPBar()
               setTimeout(() => destroy(sk), 1600)
             }
           })

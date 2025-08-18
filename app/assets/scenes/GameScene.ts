@@ -135,24 +135,33 @@ export class GameScene {
     ])
     sk.play('idle')
 
-    const hpBg = add([rect(42, 8), pos(x, y - 60), anchor('center'), color(0, 0, 0), layer('ui'), z(19)])
-    const hpBar = add([rect(40, 6), pos(x, y - 60), anchor('center'), color(0, 255, 0), layer('ui'), z(20)])
-    const updateHp = () => {
-      const p = sk.health / sk.maxHealth
-      hpBar.width = Math.round(40 * p)
-      hpBar.color = p > 0.5 ? color(0, 255, 0) : p > 0.25 ? color(255, 255, 0) : color(255, 0, 0)
-    }
-    updateHp()
+    // Create HP bar using unified HPManager
+    const enemyHpManager = new HPManager({
+      width: 40,
+      height: 6,
+      offsetY: -60,
+      zIndex: 20,
+      target: sk,
+      isEnemy: true
+    })
+
+    const hpBarElements = enemyHpManager.createHPBar(
+      sk,
+      add,
+      rect,
+      pos,
+      anchor,
+      color,
+      layer,
+      z,
+      destroy
+    )
 
     onUpdate(() => {
       if (sk.isDead) return
-      // Follow hp bar
-      const uiX = Math.round(sk.pos.x)
-      const uiY = Math.round(sk.pos.y - 60)
-      hpBg.pos.x = uiX
-      hpBg.pos.y = uiY
-      hpBar.pos.x = uiX
-      hpBar.pos.y = uiY
+      
+      // Update HP bar position
+      enemyHpManager.updateHPBarPosition(sk)
 
       // chase / patrol
       const player = get('player')[0]
@@ -187,14 +196,15 @@ export class GameScene {
 
     sk.onCollide('playerAttack', () => {
       if (sk.isDead) return
-      sk.health -= 1
-      updateHp()
+      
+      // Use HPManager to handle enemy damage
+      enemyHpManager.damageEnemy(1)
       sk.play('hit')
-      if (sk.health <= 0) {
+      
+      if (enemyHpManager.isEnemyDead()) {
         sk.isDead = true
         sk.play('dead')
-        destroy(hpBg)
-        destroy(hpBar)
+        enemyHpManager.destroyHPBar()
         setTimeout(() => destroy(sk), 1600)
       }
     })

@@ -1,4 +1,4 @@
-import { HpBarManager } from './HpBarManager'
+import { HPManager } from './HPManager'
 
 export interface EnemyConfig {
   health: number
@@ -11,7 +11,7 @@ export interface EnemyConfig {
 
 export class EnemyManager {
   private kaplayContext: any
-  private enemies: Map<any, any> = new Map() // enemy -> hpBarManager
+  private enemies: Map<any, any> = new Map() // enemy -> hpManager
 
   constructor(kaplayContext: any) {
     this.kaplayContext = kaplayContext
@@ -56,21 +56,35 @@ export class EnemyManager {
 
     skeleton.play('idle')
 
-    // Create HP bar
-    const hpBarManager = new HpBarManager(skeleton, this.kaplayContext, {
+    // Create HP bar using unified HPManager
+    const hpManager = new HPManager({
       width: 40,
       height: 6,
       offsetY: -60,
-      zIndex: 20
+      zIndex: 20,
+      target: skeleton,
+      isEnemy: true
     })
 
-    this.enemies.set(skeleton, hpBarManager)
+    const hpBarElements = hpManager.createHPBar(
+      skeleton,
+      add,
+      rect,
+      pos,
+      anchor,
+      color,
+      layer,
+      z,
+      destroy
+    )
+
+    this.enemies.set(skeleton, hpManager)
 
     // Setup AI
     this.setupSkeletonAI(skeleton)
 
     // Setup collision handling
-    this.setupSkeletonCollisions(skeleton, hpBarManager)
+    this.setupSkeletonCollisions(skeleton, hpManager)
 
     return skeleton
   }
@@ -170,7 +184,7 @@ export class EnemyManager {
     }, 700)
   }
 
-  private setupSkeletonCollisions(skeleton: any, hpBarManager: any) {
+  private setupSkeletonCollisions(skeleton: any, hpManager: any) {
     const { onUpdate, destroy } = this.kaplayContext
 
     // When hit by player attack
@@ -186,8 +200,8 @@ export class EnemyManager {
         skeleton.vel.x = 0
         skeleton.vel.y = 0
         
-        // Destroy HP bar
-        hpBarManager.destroy()
+              // Destroy HP bar
+      hpManager.destroyHPBar()
         this.enemies.delete(skeleton)
         
         // Destroy skeleton after animation
@@ -240,8 +254,8 @@ export class EnemyManager {
   }
 
   public destroyAll() {
-    for (const [enemy, hpBarManager] of this.enemies) {
-      hpBarManager.destroy()
+    for (const [enemy, hpManager] of this.enemies) {
+      hpManager.destroyHPBar()
       this.kaplayContext.destroy(enemy)
     }
     this.enemies.clear()

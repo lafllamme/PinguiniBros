@@ -4,11 +4,11 @@ import { Level3 } from '@/assets/levels/level_3'
 import { clonePlayer } from '@/assets/characters/Enemy'
 import { initCoinSystem, loadCoinAssets, spawnCoinsRandom, onScoreChanged } from '@/utils/coinSystem'
 import { audioManager } from '@/utils/AudioManager'
+import { hpManager } from '@/utils/HPManager'
 
 export class GameScene {
   private level: LevelDef
   private game = useGameStore()
-  private hpColorState: 'g' | 'y' | 'r' = 'g'
 
   constructor(level: LevelDef = Level1) {
     this.level = level
@@ -65,116 +65,42 @@ export class GameScene {
   // --- Player HP UI ---
   private playerHpBar: any
   private playerHpBg: any
-  private playerHpW = 40
-  private playerHpH = 6
-  private lastDamageTs = 0
-  private regenTimer = 0
 
   private createPlayerUI() {
     const player = get('player')[0]
     if (!player) return
-    // Background centered
-    this.playerHpBg = add([
-      rect(this.playerHpW + 2, this.playerHpH + 2),
-      pos(player.pos.x, player.pos.y - 60),
-      anchor('center'),
-      color(0, 0, 0),
-      layer('ui'),
-      z(200),
-    ])
-    // Foreground bar left-anchored so it shrinks right->left
-    this.playerHpBar = add([
-      rect(this.playerHpW, this.playerHpH),
-      pos(player.pos.x - this.playerHpW / 2, player.pos.y - 60),
-      anchor('left'),
-      color(0, 255, 0),
-      layer('ui'),
-      z(201),
-    ])
+    
+    // Use HPManager to create and manage HP bar
+    const hpBarElements = hpManager.createHPBar(
+      player,
+      add,
+      rect,
+      pos,
+      anchor,
+      color,
+      layer,
+      z,
+      destroy
+    )
+    
+    // Store references if needed
+    this.playerHpBar = hpBarElements?.hpBar
+    this.playerHpBg = hpBarElements?.hpBarBg
 
-    const updateBar = () => {
-      const pct = Math.max(0, Math.min(1, this.game.player.hp / this.game.player.maxHp))
-      const w = this.game.player.hp <= 0 ? 0 : Math.floor(this.playerHpW * pct)
-
-      // Determine color bucket
-      const state: 'g' | 'y' | 'r' = pct > 0.6 ? 'g' : pct > 0.3 ? 'y' : 'r'
-      const clr = state === 'g' ? color(0, 255, 0) : state === 'y' ? color(255, 255, 0) : color(255, 0, 0)
-
-      // Position reference (left-anchored bar)
-      const pl = get('player')[0]
-      if (!pl) return
-      const x = Math.round(pl.pos.x)
-      const y = Math.round(pl.pos.y - 50)
-
-      if (state !== this.hpColorState) {
-        // Rebuild bar to guarantee color update in Kaplay
-        destroy(this.playerHpBar)
-        this.playerHpBar = add([
-          rect(w, this.playerHpH),
-          pos(x - this.playerHpW / 2, y),
-          anchor('left'),
-          clr,
-          layer('ui'),
-          z(201),
-        ])
-        this.hpColorState = state
-      } else {
-        // Update width only
-        this.playerHpBar.width = w
-      }
-
-      // Debug log for HP bar changes
-      console.log(`[HP] Bar update: hp=${this.game.player.hp}/${this.game.player.maxHp}, pct=${(pct*100).toFixed(1)}%, width=${w}/${this.playerHpW}`)
-    }
-    updateBar()
-
-    // Lightweight update loop: only recalc width when HP or pos changed
-    let lastHp = this.game.player.hp
-    let lastX = 0
-    let lastY = 0
+    // Update loop for HP bar position and regeneration
     onUpdate(() => {
       const pl = get('player')[0]
       if (!pl) return
-      const x = Math.round(pl.pos.x)
-      const y = Math.round(pl.pos.y - 60)
-      // Background stays centered
-      this.playerHpBg.pos.x = x
-      this.playerHpBg.pos.y = y
-      // Foreground begins at the left edge of the bg
-      this.playerHpBar.pos.x = x - this.playerHpW / 2
-      this.playerHpBar.pos.y = y
-      if (x !== lastX || y !== lastY) {
-        lastX = x; lastY = y
-        // positions already set above
-      }
-      if (this.game.player.hp !== lastHp) {
-        lastHp = this.game.player.hp
-        updateBar()
-      }
-      // Regen after no damage for 5s, then 1 HP every 2s
-      const now = Date.now()
-      // Do not regen during death animation
-      if ((pl as any).isDead) return
-      const msSinceDamage = now - this.game.lastDamageAt
-      if (msSinceDamage > 5000 && this.game.player.hp < this.game.player.maxHp) {
-        this.regenTimer += dt()
-        if (this.regenTimer >= 2) {
-          this.game.healPlayer(1)
-          console.log(`[HP] Regen +1 -> ${this.game.player.hp}/${this.game.player.maxHp}`)
-          updateBar()
-          this.regenTimer = 0
-        }
-      } else {
-        // reset the regen timer while taking damage window is active
-        this.regenTimer = 0
-      }
+      
+      // Update HP bar position
+      hpManager.updateHPBarPosition(pl)
+      
+      // Handle regeneration
+      hpManager.updateRegeneration(dt(), pl)
     })
 
-    // External damage hook so other modules can mark damage and force an update
-    // Regen timer driven by store timestamps; no window hooks needed
-
     // expose for damage hooks
-    ;(this as any).updatePlayerHpBar = updateBar
+    ;(this as any).updatePlayerHpBar = () => hpManager.updateHPBar()
   }
 
   private createPlatforms() {
@@ -348,19 +274,31 @@ export class GameScene {
 
   // player damage + lives handling
   private damagePlayer(n: number) {
-    this.game.damagePlayer(n)
-    this.lastDamageTs = Date.now()
+    // Use HPManager to handle damage
+    const damageApplied = hpManager.applyDamage(n, {
+      playSound: true,
+      soundVolume: 0.4,
+      triggerDeath: true
+    })
+    
+    if (!damageApplied) return
+    
     console.log(`[HP] Damage -${n} -> ${this.game.player.hp}/${this.game.player.maxHp}`)
+    
+    // Update HP bar
     const update = (this as any).updatePlayerHpBar
     if (typeof update === 'function') update()
-    const livesText = get('livesText')[0]
-    if (this.game.player.hp <= 0) {
+    
+    // Handle death logic
+    if (hpManager.isPlayerDead()) {
       this.game.loseLife()
+      const livesText = get('livesText')[0]
       if (livesText) livesText.text = `Lives: ${this.game.lives}`
+      
       if (this.game.lives <= 0) {
         go('gameOver', { level: this.game.currentLevel })
       } else {
-        this.game.respawnPlayer()
+        hpManager.respawnPlayer()
         if (typeof update === 'function') update()
       }
     }
@@ -430,6 +368,9 @@ export class GameScene {
   }
 
   private respawnPlayer() {
+    // Use HPManager to reset player state
+    hpManager.respawnPlayer()
+    
     // Remove current player
     destroyAll('player')
     

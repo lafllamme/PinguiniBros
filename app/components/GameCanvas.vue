@@ -44,6 +44,7 @@ import { Level2 } from '@/assets/levels/level_2'
 import { Level3 } from '@/assets/levels/level_3'
 import { onScoreChanged, initScore, initCoinSystem } from '@/utils/coinSystem'
 import { audioManager } from '@/utils/AudioManager'
+import { hpManager } from '@/utils/HPManager'
 import { initAssetLoader, loadAllAssets } from '../utils/AssetLoader'
 import { spawnTiles1Board, spawnTiles1Showcase, spawnTiles1Picker, spawnTiles1RowsSeparated } from '@/utils/Tiles1Demo'
 import { spawnTiles1CatalogShowcase, spawnLevel3SandTheme, spawnDoor } from '@/utils/Tiles1Catalog'
@@ -797,21 +798,25 @@ const startGame = async () => {
       // Damage + lives
       // lives already declared above
       function applyDamage(dmg: number) {
-        if (player.health <= 0 || player.isDead) return
-        console.log(`⚔️ Applying damage: ${dmg}, Current HP: ${player.health}`)
+        // Use HPManager to handle damage logic
+        const damageApplied = hpManager.applyDamage(dmg, {
+          playSound: true,
+          soundVolume: 0.4,
+          triggerDeath: true
+        })
+        
+        if (!damageApplied) return
         
         // Play hurt sound
         play('owl_hurt', { volume: 0.4 })
         
-        // Update game store first
-        game.damagePlayer(dmg)
-        // Then sync local health with game store
+        // Sync local health with game store
         player.health = game.player.hp
         
-        console.log(`💔 After damage: Local HP: ${player.health}, Game store HP: ${game.player.hp}`)
-        // HP system reacts to Pinia store; no window hooks needed
-        if (player.health <= 0) {
+        // Handle death animation and respawn logic
+        if (hpManager.isPlayerDead()) {
           console.log(`💀 Player died! Triggering death animation...`)
+          
           // Play explosion sound
           play('owl_explosion', { volume: 0.5 })
           
@@ -830,7 +835,7 @@ const startGame = async () => {
               go('gameOver', { level })
             } else {
               // Reset HP to full and restart same level with one fewer life
-              game.respawnPlayer()
+              hpManager.respawnPlayer()
               go('game', { level, lives })
             }
           }, 2000) // Wait 2 seconds for death animation

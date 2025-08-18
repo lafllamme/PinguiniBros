@@ -10,6 +10,8 @@ export const useGameStore = defineStore('game', () => {
   const player = reactive<PlayerStats>(clonePlayer())
   const lastDamageAt = ref(0)
   const lastHealAt = ref(0)
+  const isPlayerDead = ref(false)
+  const canTakeDamage = ref(true)
   
   // Dynamic screen dimensions
   const screenWidth = ref(800)
@@ -31,7 +33,7 @@ export const useGameStore = defineStore('game', () => {
     const p = hpPercent.value
     return p > 0.6 ? 'g' : p > 0.3 ? 'y' : 'r'
   })
-  const isPlayerDead = computed(() => player.hp <= 0)
+  const isPlayerDeadComputed = computed(() => player.hp <= 0 || isPlayerDead.value)
   const isGameOver = computed(() => lives.value <= 0)
 
   // actions
@@ -77,6 +79,16 @@ export const useGameStore = defineStore('game', () => {
 
   function respawnPlayer() {
     player.hp = player.maxHp
+    isPlayerDead.value = false
+    canTakeDamage.value = true
+  }
+
+  function setPlayerDead(dead: boolean) {
+    isPlayerDead.value = dead
+  }
+
+  function setCanTakeDamage(canDamage: boolean) {
+    canTakeDamage.value = canDamage
   }
   
   function setScreenDimensions(width: number, height: number) {
@@ -120,13 +132,15 @@ export const useGameStore = defineStore('game', () => {
     player,
     lastDamageAt,
     lastHealAt,
+    isPlayerDead,
+    canTakeDamage,
     screenWidth,
     screenHeight,
     levelGrid,
     // derived
     hpPercent,
     hpBucket,
-    isPlayerDead,
+    isPlayerDeadComputed,
     isGameOver,
     // actions
     setLevel,
@@ -137,6 +151,8 @@ export const useGameStore = defineStore('game', () => {
     damagePlayer,
     healPlayer,
     respawnPlayer,
+    setPlayerDead,
+    setCanTakeDamage,
     setScreenDimensions,
     setLevelGrid,
     calculateLevelGrid,

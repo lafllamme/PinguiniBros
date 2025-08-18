@@ -1206,7 +1206,7 @@ const startGame = async () => {
         layer('ui'),
         fixed(),
         z(100),
-        scale(1.2), // Scale up slightly to cover more screen
+        scale(1.0), // Set to 1.0 as requested
       ])
 
       // Win content image
@@ -1217,7 +1217,7 @@ const startGame = async () => {
         layer('ui'),
         fixed(),
         z(101),
-        scale(0.5), // Slightly bigger scale
+        scale(0.35), // Scaled down by 30% from 0.5
       ])
 
       // Level complete text

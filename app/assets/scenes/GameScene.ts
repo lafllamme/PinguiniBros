@@ -2,7 +2,8 @@ import { useGameStore } from '@/stores/game'
 import { Level1, type LevelDef } from '@/assets/levels/level_1'
 import { Level3 } from '@/assets/levels/level_3'
 import { clonePlayer } from '@/assets/characters/Enemy'
-import { initCoinSystem, loadCoinAssets, spawnCoinsRandom, onScoreChanged, playLobbyMusic } from '@/utils/coinSystem'
+import { initCoinSystem, loadCoinAssets, spawnCoinsRandom, onScoreChanged } from '@/utils/coinSystem'
+import { audioManager } from '@/utils/AudioManager'
 
 export class GameScene {
   private level: LevelDef
@@ -336,7 +337,7 @@ export class GameScene {
 
   private async setupCoinsAndMusic() {
     await loadCoinAssets()
-    playLobbyMusic(0.6)
+    audioManager.playMusic('lobby', { volume: 0.6 })
     spawnCoinsRandom(this.level.coins.length || 15, { x: 0, y: 0, w: this.level.width, h: 600 }, { falling: false })
     onScoreChanged((n: number) => {
       this.game.addScore(n - this.game.score)

@@ -42,7 +42,8 @@ import { GameScene } from '@/assets/scenes/GameScene'
 import { Level1 } from '@/assets/levels/level_1'
 import { Level2 } from '@/assets/levels/level_2'
 import { Level3 } from '@/assets/levels/level_3'
-import { onScoreChanged, initScore, playStartMusic, playLobbyMusic, initCoinSystem, fadeOutMusic, stopAllMusic } from '@/utils/coinSystem'
+import { onScoreChanged, initScore, initCoinSystem } from '@/utils/coinSystem'
+import { audioManager } from '@/utils/AudioManager'
 import { initAssetLoader, loadAllAssets } from '../utils/AssetLoader'
 import { spawnTiles1Board, spawnTiles1Showcase, spawnTiles1Picker, spawnTiles1RowsSeparated } from '@/utils/Tiles1Demo'
 import { spawnTiles1CatalogShowcase, spawnLevel3SandTheme, spawnDoor } from '@/utils/Tiles1Catalog'
@@ -54,8 +55,6 @@ const gameCanvas = ref<HTMLCanvasElement>()
 const containerEl = ref<HTMLElement>()
 const gameStarted = ref(false)
 let gameInstance: any = null
-let lobbyMusic: any = null
-let currentMusic: any = null // Track current playing music
 const game = useGameStore()
 
 // Responsive sizing using VueUse
@@ -141,6 +140,9 @@ const startGame = async () => {
 
     // Initialize coin system with Kaplay context
     initCoinSystem(gameInstance)
+    
+    // Initialize audio manager with Kaplay context
+    audioManager.init(gameInstance)
 
     // Global Phase System - Level-based background selection
     const loadPhaseBackground = (level: number) => {
@@ -178,105 +180,16 @@ const startGame = async () => {
       // Simple music switch: stop start music, play lobby music
       console.log('🎵 Stopping start music and starting lobby music...')
       
-      // Properly stop the current music using the handle
-      console.log('🎵 Current music handle:', currentMusic)
-      console.log('🎵 Lobby music handle:', lobbyMusic)
+      // Switch to lobby music for gameplay
+      console.log('🎵 Switching from start music to lobby music...')
       
-      if (currentMusic && typeof currentMusic.stop === 'function') {
-        console.log('🎵 Stopping current music with handle.stop()...')
-        try { 
-          currentMusic.stop() 
-          console.log('✅ Current music stopped successfully')
-        } catch (e) { 
-          console.log('❌ Failed to stop current music with handle:', e) 
-        }
-      } else {
-        console.log('❌ Current music handle has no stop() method:', currentMusic)
-      }
-      
-      // Force stop all sounds
       try {
-        console.log('🎵 Calling stopAll()...')
-        if (gameInstance && typeof gameInstance.stopAll === 'function') {
-          gameInstance.stopAll()
-        }
+        audioManager.playMusic('lobby', { volume: 0.6 })
       } catch (error) {
-        console.warn('❌ stopAll failed:', error)
+        console.warn('❌ Failed to start lobby music:', error)
       }
       
-      // Try to stop specific sounds
-      try {
-        console.log('🎵 Trying to stop specific sounds...')
-        if (gameInstance && typeof gameInstance.stop === 'function') {
-          gameInstance.stop('start')
-          gameInstance.stop('lobby')
-        }
-      } catch (error) {
-        console.warn('❌ Specific stop failed:', error)
-      }
-      
-      // Nuclear option: Stop ALL audio on the page
-      try {
-        console.log('🎵 NUCLEAR OPTION: Stopping ALL audio on the page...')
-        
-        // Stop all HTML5 audio elements
-        const audioElements = document.querySelectorAll('audio')
-        audioElements.forEach(audio => {
-          console.log('🎵 Stopping audio element:', audio)
-          audio.pause()
-          audio.currentTime = 0
-        })
-        
-        // Stop all Web Audio API sources
-        if (window.AudioContext) {
-          console.log('🎵 AudioContext available, trying to suspend...')
-          try {
-            // Try to suspend any active audio context
-            const contexts = (window as any).__audioContexts || []
-            contexts.forEach((ctx: any) => {
-              if (ctx && typeof ctx.suspend === 'function') {
-                ctx.suspend()
-              }
-            })
-          } catch (e) {
-            console.log('❌ AudioContext suspend failed:', e)
-          }
-        }
-        
-        // Try to stop all Kaplay sounds by accessing internal state
-        if (gameInstance && gameInstance._sounds) {
-          console.log('🎵 Stopping Kaplay internal sounds...')
-          Object.keys(gameInstance._sounds).forEach(soundName => {
-            console.log('🎵 Stopping sound:', soundName)
-            try {
-              if (gameInstance._sounds[soundName] && typeof gameInstance._sounds[soundName].stop === 'function') {
-                gameInstance._sounds[soundName].stop()
-              }
-            } catch (e) {
-              console.log('❌ Failed to stop sound:', soundName, e)
-            }
-          })
-        }
-        
-      } catch (error) {
-        console.warn('❌ Nuclear audio stop failed:', error)
-      }
-      
-      // Small delay to ensure music is stopped, then start lobby music
-      setTimeout(() => {
-        console.log('🎵 Starting lobby music...')
-        
-        // Play lobby music and store the handle properly
-        try {
-          currentMusic = play('lobby', { loop: true, volume: 0.6 })
-          lobbyMusic = currentMusic
-          console.log('🎵 Lobby music handle:', currentMusic)
-        } catch (error) {
-          console.warn('❌ Failed to start lobby music:', error)
-          currentMusic = null
-          lobbyMusic = null
-        }
-      }, 100) // Reduced delay since we're using proper handles now
+      // AudioManager handles the music switching automatically
 
       // Load phase background for this level - always use phase1
       loadPhaseBackground(1)
@@ -859,9 +772,15 @@ const startGame = async () => {
 
       onClick('pauseSoundBtn', () => {
         soundMuted = !soundMuted
-        if (typeof lobbyMusic?.pause === 'function' && typeof lobbyMusic?.play === 'function') {
-          if (soundMuted) lobbyMusic.pause()
-          else lobbyMusic.play()
+        // AudioManager handles music pausing/resuming
+        if (soundMuted) {
+          audioManager.stopCurrentMusic()
+        } else {
+          // Resume current music if needed
+          if (audioManager.isMusicPlaying()) {
+            // Replay the current music
+            audioManager.playMusic('lobby', { volume: 0.6 })
+          }
         }
         if (pauseSoundBtn) pauseSoundBtn.text = soundMuted ? 'Sound: Off' : 'Sound: On'
       })
@@ -1437,14 +1356,9 @@ const startGame = async () => {
 
       // Start music for menu
       try {
-        // Play the start music and store the handle properly
-        currentMusic = play('start', { loop: true, volume: 0.6 })
-        lobbyMusic = currentMusic
-        console.log('🎵 Start music handle:', currentMusic)
+        audioManager.playMusic('start', { volume: 0.6 })
       } catch (error) {
         console.warn('Failed to start menu music:', error)
-        currentMusic = null
-        lobbyMusic = null
       }
 
       onKeyPress('enter', () => go('levelSelect'))
@@ -1472,23 +1386,10 @@ const startGame = async () => {
     // Level select scene (mock 1..99)
     scene('levelSelect', () => {
       // Start music for level selection
-      if (currentMusic) {
-        try { 
-          console.log('🎵 Stopping current music handle:', currentMusic)
-          currentMusic.stop() 
-        } catch (e) { 
-          console.log('❌ Failed to stop current music:', e) 
-        }
-      }
       try {
-        // Play the start music and store the handle properly
-        currentMusic = play('start', { loop: true, volume: 0.6 })
-        lobbyMusic = currentMusic
-        console.log('🎵 Level selection music handle:', currentMusic)
+        audioManager.playMusic('start', { volume: 0.6 })
       } catch (error) {
         console.warn('Failed to start level selection music:', error)
-        currentMusic = null
-        lobbyMusic = null
       }
 
       // Level selection background
@@ -1596,15 +1497,22 @@ onUnmounted(() => {
   }
 })
 
-// Mount-time wiring for header measurement & visibility audio pause/resume
-onMounted(() => {
-  headerEl.value = document.getElementById('app-title') as HTMLElement | null
-  const visibility = useDocumentVisibility()
-  watch(visibility, (v) => {
-    if (!lobbyMusic) return
-    if (v === 'visible') lobbyMusic.play()
-    else lobbyMusic.pause()
-  })
+  // Mount-time wiring for header measurement & visibility audio pause/resume
+  onMounted(() => {
+    headerEl.value = document.getElementById('app-title') as HTMLElement | null
+    const visibility = useDocumentVisibility()
+    watch(visibility, (v) => {
+      // AudioManager handles visibility-based audio control
+      if (v === 'visible') {
+        // Resume music if it was playing
+        if (audioManager.isMusicPlaying()) {
+          audioManager.playMusic('lobby', { volume: 0.6 })
+        }
+      } else {
+        // Pause music when tab is not visible
+        audioManager.stopCurrentMusic()
+      }
+    })
 
   // Adjust pixel scale on resize without re-initializing Kaplay
   watch(

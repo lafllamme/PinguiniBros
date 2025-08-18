@@ -492,8 +492,8 @@ const startGame = async () => {
           pl.jumpState = true
           pl.isOnGround = false
           
-          // Play jump sound
-          play('owl_jump', { volume: 0.3 })
+                  // Play jump sound
+         play('owl_jump', { volume: 0.15 })
           
           // Switch to jump sprite and play animation
           setPlayerSprite('player_jump', 'jump')
@@ -1146,6 +1146,7 @@ const startGame = async () => {
       if (level === 3) {
         let doorAnimationStarted = false
         let doorAnimationLooping = false
+        let doorSoundPlayed = false
         let levelCompleted = false
         
         onUpdate(() => {
@@ -1161,6 +1162,17 @@ const startGame = async () => {
               doorAnimationStarted = true
               doorAnimationLooping = true
               console.log('[Door] Player near door (distance:', distance, '), starting looping animation')
+              
+              // Play door sound when player gets near (only once)
+              if (!doorSoundPlayed) {
+                try {
+                  play('door', { volume: 0.4 })
+                  doorSoundPlayed = true
+                  console.log('[Door] Door sound played')
+                } catch (error) {
+                  console.warn('Failed to play door sound:', error)
+                }
+              }
               
               // Looping animation
               let frame = 0
@@ -1200,6 +1212,14 @@ const startGame = async () => {
 
     // Epic win scene with background overlay
     scene('win', () => {
+      // Play success sound when win scene starts
+      try {
+        play('success', { volume: 0.6 })
+        console.log('🎵 Success sound played')
+      } catch (error) {
+        console.warn('Failed to play success sound:', error)
+      }
+
       // Add win overlay background
       add([
         sprite('win_overlay'),
@@ -1246,7 +1266,7 @@ const startGame = async () => {
 
       // Alternative controls
       add([
-        text('Or press R to restart | Enter for Level Select', {size: 18, font: 'arial'}),
+        text('Or press R to restart | L for Level Select', {size: 18, font: 'arial'}),
         pos(width() / 2, height() / 2 + 220),
         anchor('center'),
         layer('ui'),
@@ -1270,7 +1290,7 @@ const startGame = async () => {
       onKeyPress('enter', () => go('levelSelect'))
       onKeyPress('return', () => go('levelSelect'))
       onKeyPress('kpenter', () => go('levelSelect'))
-      onKeyPress('space', () => go('levelSelect'))
+      onKeyPress('l', () => go('levelSelect'))
     })
 
     // Game over scene
@@ -1298,7 +1318,7 @@ const startGame = async () => {
       ])
 
       add([
-        text('Press Enter to retry level, or M for Menu', {size: 24}),
+        text('Press Enter to retry level, or L for Level Select', {size: 24}),
         pos(width() / 2, height() / 2 + 160),
         anchor('center'),
         layer('ui'),
@@ -1364,7 +1384,7 @@ const startGame = async () => {
       onKeyPress('enter', () => go('levelSelect'))
       onKeyPress('return', () => go('levelSelect'))
       onKeyPress('kpenter', () => go('levelSelect'))
-      onKeyPress('space', () => go('levelSelect'))
+      onKeyPress('l', () => go('levelSelect'))
 
       // Quick numeric selection: press 0-9 to start that level directly
       const startLevel = (n: number) => {

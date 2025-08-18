@@ -98,8 +98,8 @@ export class PlayerController {
     this.jumpState = true
     this.isOnGround = false
     
-    // Play jump sound
-    this.kaplayContext.play('owl_jump', { volume: 0.3 })
+          // Play jump sound
+      this.kaplayContext.play('owl_jump', { volume: 0.15 })
     
     // Apply jump force
     this.player.jump(this.config.jumpForce)

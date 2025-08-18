@@ -156,6 +156,10 @@ export async function loadAllAssets(): Promise<void> {
   soundLoads.push(loadSound('owl_jump', sound('../assets/sounds/character/owl/jump.wav')))
   soundLoads.push(loadSound('owl_explosion', sound('../assets/sounds/character/owl/explosion.wav')))
 
+  // Item sounds
+  soundLoads.push(loadSound('door', sound('../assets/sounds/items/door.wav')))
+  soundLoads.push(loadSound('success', sound('../assets/sounds/items/success.wav')))
+
   // Lobby music
   try {
     soundLoads.push(loadSound('lobby', sound('../assets/music/lobby_1.wav')))
